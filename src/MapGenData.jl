@@ -2,12 +2,19 @@ module MapGenData
 
 export export_artifacts, FITSArtifact, JLD2Artifact
 
+artifact_cache = ""
+
 include("includes.jl")
+include("utils.jl")
 include("data_types.jl")
-# include("process_fits.jl")
+include("process_fits.jl")
 # include("process_galactic_foreground.jl")
 include("make_artifacts.jl")
 
-# Write your package code here.
+
+
+function __init__()
+    global artifact_cache = @get_scratch!("artifact_cache")
+end
 
 end

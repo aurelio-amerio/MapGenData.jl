@@ -1,36 +1,135 @@
-function read_fermi_map(binpath, nside::Int, kind::String="SV")
-    @assert nside <= 2048 "nside must be <= 2048"
-    @assert ispow2(nside) "nside must be a power of 2"
-    if kind == "SV"
-        filepath = "$binpath/SV/w9w765_SOURCEVETO_t1_nside2048_outofbin.fits"
-    elseif  kind == "UCV"
-        filepath = "$binpath/UCV/w9w765_ULTRACLEANVETO_t1_nside2048_outofbin.fits"
-    else
-        @error "kind $kind not supported. Choose `SV` or `UCV`"
+function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin_macro::AbstractVector, Emax_macro::AbstractVector)
+    flag = true
+    @assert all(Emin_micro .< Emax_micro) "Emin_micro must be < Emax_micro"
+    @assert all(Emin_macro .< Emax_macro) "Emin_macro must be < Emax_macro"
+
+    flag = flag & all(Emax_macro .<= maximum(Emax_micro)) # out of bounds
+
+    flag = flag & all(Emin_macro .>= minimum(Emin_micro)) # out of bounds
+
+    flag = flag & all([Emin in Emin_micro for Emin in Emin_macro])
+    flag = flag & all([Emax in Emax_micro for Emax in Emax_macro])
+    return flag
+end
+
+function get_E_bins()
+    filepath = joinpath(artifact_cache, "fits", "gtbin.h5")
+    @assert isfile(filepath) "gtbin.h5 not found. Run `make_fits_artifact` first"
+    fid = h5open(filepath, "r") 
+    Emin_ = fid["EBOUNDS/DATA/E_MIN"][:]
+    Emax_ = fid["EBOUNDS/DATA/E_MAX"][:]
+    close(fid)
+    return Emin_, Emax_
+end
+
+function get_E_bins(units::Unitful.EnergyFreeUnits)
+    Emin_, Emax_ = get_E_bins() .* u"MeV"
+    return uconvert.(units, Emin_), uconvert.(units, Emax_)
+end
+
+
+function read_fermi_map(jld2_artifact::JLD2Artifact)
+    nside = jld2_artifact.nside
+    filepath = joinpath(artifact_cache, "fits", "gtbin.h5")
+    @assert isfile(filepath) "gtbin.h5 not found. Run `make_fits_artifact` first"
+
+    Emin_micro, Emax_micro = get_E_bins()
+
+    fid = h5open(filepath, "r") 
+
+    # initialize the map
+    map_binned = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+    for i in eachindex(map_binned)
+        map_binned[i] = HealpixMap{Float64, RingOrder}(2048)
     end
-
-    map_ = HealpixMap{Float64, RingOrder}(2048)
-
-    FITS(filepath, "r") do f
-        for channel in 1:10
-            map_.pixels .+= read(f[2],"CHANNEL$channel")
+    
+    #fill the map
+    @showprogress "Reading map" for i in eachindex(jld2_artifact.Emin_array)
+        for j in eachindex(Emin_micro)
+            if (Emin_micro[j] >= jld2_artifact.Emin_array[i]) & (Emax_micro[j] <= jld2_artifact.Emax_array[i])
+                map_binned[i].pixels .+= fid["SKYMAP/DATA"]["CHANNEL$j"][:]
+            end
         end
     end
+    close(fid)
+
     if nside == 2048
-        return map_
+        return map_binned
     else
-        return ud_grade(map_, nside, power=-2)
+        map_binned_ud = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+        @showprogress "Downgrading map" for i in eachindex(map_binned_ud)
+            map_binned_ud[i] = ud_grade(map_binned[i], nside, power=-2)
+        end
+        return map_binned_ud
     end
 end
 
-function write_fermi_map_as_jld2(binpath, dir, nside::Int, kind="SV")
+function write_fermi_map_as_jld2(outdir, jld2_artifact::JLD2Artifact, compress=true)
     @info "Processing Fermi photon counts map"
-    map_ = read_fermi_map(binpath, nside, kind)
-    dict_ = Dict{String, HealpixMap{Float64, RingOrder}}()
-    dict_["fermi_map"] = map_
-    save("$dir/w9w765_$(kind)_t1_nside$(nside)_fermi_map.jld2", dict_, compress=compress)
-    return
+    map_binned = read_fermi_map(jld2_artifact)
+    dict_ = Dict{String, Any}()
+    dict_["fermi_map"] = map_binned
+    dict_["Emin"] = jld2_artifact.Emin_array
+    dict_["Emax"] = jld2_artifact.Emax_array
+
+    save("$outdir/fermi_map.jld2", dict_, compress=compress)
+    return "$outdir/fermi_map.jld2"
 end
+
+function read_exposure_map(jld2_artifact::JLD2Artifact)
+    nside = jld2_artifact.nside
+    filepath = joinpath(artifact_cache, "fits", "gtexpcube2.h5")
+
+    Emin_micro, Emax_micro = get_E_bins()
+
+    fid = h5open(filepath, "r") 
+
+    # initialize the map
+    map_binned = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+    for i in eachindex(map_binned)
+        map_binned[i] = HealpixMap{Float64, RingOrder}(2048)
+    end
+    
+    #fill the map
+    bin_counts = zeros(Int, length(jld2_artifact.Emin_array))
+    @showprogress "Reading map" for i in eachindex(jld2_artifact.Emin_array)
+        for j in eachindex(Emin_micro)
+            if (Emin_micro[j] >= jld2_artifact.Emin_array[i]) & (Emax_micro[j] <= jld2_artifact.Emax_array[i])
+                map_binned[i].pixels .+= fid["HPXEXPOSURES/DATA"]["ENERGY$j"][:]
+                bin_counts[i] += 1
+            end
+        end
+    end
+    close(fid)
+
+    for i in eachindex(map_binned)
+        map_binned[i].pixels ./= bin_counts[i]
+    end
+
+    if nside == 2048
+        return map_binned
+    else
+        map_binned_ud = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+        @showprogress "Downgrading map" for i in eachindex(map_binned_ud)
+            map_binned_ud[i] = ud_grade(map_binned[i], nside)
+        end
+        return map_binned_ud
+    end
+end
+
+function write_exposure_map_as_jld2(outdir, jld2_artifact::JLD2Artifact, compress=true)
+    @info "Processing exposure map"
+    map_binned = read_exposure_map(jld2_artifact)
+    dict_ = Dict{String, Any}()
+    dict_["exposure_map"] = map_binned
+    dict_["Emin"] = jld2_artifact.Emin_array
+    dict_["Emax"] = jld2_artifact.Emax_array
+
+    save("$outdir/exposure_map.jld2", dict_, compress=compress)
+    return "$outdir/exposure_map.jld2"
+end
+
+#=
 
 function read_exposure_map(exppath, nside::Int, kind::String="SV")
     @assert nside <= 2048 "nside must be <= 2048"
@@ -150,5 +249,5 @@ end
 #     return [pix <= 1e-12 ? false : true for pix in mask_float.pixels]
 # end
 
-
+=#
 

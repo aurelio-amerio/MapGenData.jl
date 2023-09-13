@@ -1,25 +1,49 @@
 # make the artifact for the fits files
 function make_fits_artifact(fits_artifact::FITSArtifact)
     tmp_dir = mktempdir()
+    mkpath(joinpath(artifact_cache, "fits"))
     # tmp_dir = mkpath("/tmp/tmp_art")
     @info "Copying .h5 fits files"
-    cp(joinpath(fits_artifact.fitsdir, "gtbin.h5"), joinpath(tmp_dir, "gtbin.h5"), force=true)
-    cp(joinpath(fits_artifact.fitsdir, "gtexpcube2.h5"), joinpath(tmp_dir, "gtexpcube2.h5"), force=true)
-    cp(joinpath(fits_artifact.fitsdir, "gtpsf.h5"), joinpath(tmp_dir, "gtpsf.h5"), force=true)
+    #first we copy all the files to the scratch directory, 
+    #then we copy them to the temp directory to make the artifact
+    if ! isfile(joinpath(artifact_cache, "gtbin.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtbin.h5"), joinpath(artifact_cache, "fits", "gtbin.h5"), force=true)
+    end
+    if ! isfile(joinpath(artifact_cache, "gtexpcube2.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtexpcube2.h5"), joinpath(artifact_cache, "fits", "gtexpcube2.h5"), force=true)
+    end
+    if ! isfile(joinpath(artifact_cache, "gtpsf.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtpsf.h5"), joinpath(artifact_cache, "fits", "gtpsf.h5"), force=true)
+    end
 
-    @info "Downloading gll_psc"
+    # copy from the artifact cache to the tmp directory
+    cp(joinpath(artifact_cache, "fits", "gtbin.h5"), joinpath(tmp_dir, "gtbin.h5"), force=true)
+    cp(joinpath(artifact_cache, "fits", "gtexpcube2.h5"), joinpath(tmp_dir, "gtexpcube2.h5"), force=true)
+    cp(joinpath(artifact_cache, "fits", "gtpsf.h5"), joinpath(tmp_dir, "gtpsf.h5"), force=true)
+    
+
+    @info "Fetching gll_psc"
     #4FGL-DR4 catalog
     gll_psc_url = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/14yr_catalog/gll_psc_v32.fit"
-    Downloads.download(gll_psc_url, joinpath(tmp_dir, "gll_psc_v32.fit"))
+    
+    if ! isfile(joinpath(artifact_cache, "fits", "gll_psc_v32.fit"))
+        Downloads.download(gll_psc_url, joinpath(artifact_cache, "fits","gll_psc_v32.fit"))
+    end
+
+    cp(joinpath(artifact_cache, "fits", "gll_psc_v32.fit"), joinpath(tmp_dir, "gll_psc_v32.fit"), force=true)
 
     @info "Fetching foreground template"
     #foreground template
-    if isfile(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"))
-        cp(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)
-    else
-        gll_iem_url = "https://fermi.gsfc.nasa.gov/ssc/data/analysis/software/aux/4fgl/gll_iem_v07.fits"
-        Downloads.download(gll_iem_url, joinpath(tmp_dir, "gll_iem_v07.fits"))
+    if ! isfile(joinpath(artifact_cache, "fits", "gll_iem_v07.fits"))
+        if isfile(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"))
+            cp(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"), joinpath(artifact_cache, "fits", "gll_iem_v07.fits"), force=true)
+        else
+            gll_iem_url = "https://fermi.gsfc.nasa.gov/ssc/data/analysis/software/aux/4fgl/gll_iem_v07.fits"
+            Downloads.download(gll_iem_url, joinpath(artifact_cache, "fits", "gll_iem_v07.fits"))
+        end
     end
+
+    cp(joinpath(artifact_cache, "fits", "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)
 
     mkpath(fits_artifact.outdir)
 
@@ -30,6 +54,9 @@ function make_fits_artifact(fits_artifact::FITSArtifact)
     return "$(fits_artifact.outdir)/fits.tar.gz", "SHA256: $sha256_fits"
 end
 
+function delete_cache()
+    delete_scratch!(MapGenData, "artifact_cache")
+end
 #=
 
 # dest = mkpath("artifacts")
