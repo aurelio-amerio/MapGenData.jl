@@ -7,8 +7,8 @@ struct JLD2Artifact{S}
     outdir::String
     nside::Int
     name::String
-    Emin_array::SVector{S, Float64}
-    Emax_array::SVector{S, Float64}
+    Emin_array::SVector{S, Float64} # MeV
+    Emax_array::SVector{S, Float64} # MeV
 end
 
 function JLD2Artifact{S}(outdir::String, nside::Int, name::String, Emin_array::AbstractVector{Float64}, Emax_array::AbstractVector{Float64}) where {S}
@@ -28,7 +28,7 @@ function JLD2Artifact(outdir::String, nside::Int, name::String, Emin_array::Abst
     return JLD2Artifact{length(Emin_array)}(outdir, nside, name, Emin_array, Emax_array)
 end
 
-function JLD2Artifact(outdir::String, nside::Int, name::String, Emin_array::AbstractVector{T}, Emax_array::AbstractVector{T}) where {T<:Unitful.Energy}
+function JLD2Artifact(outdir::String, nside::Int, name::String, Emin_array::AbstractVector{T}, Emax_array::AbstractVector{T}) where {T<:Energy}
     Emin_ = ustrip.(u"MeV", Emin_array)
     Emax_ = ustrip.(u"MeV", Emax_array)
     return JLD2Artifact{length(Emin_array)}(outdir, nside, name, Emin_, Emax_)

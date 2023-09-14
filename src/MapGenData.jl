@@ -8,7 +8,7 @@ include("includes.jl")
 include("utils.jl")
 include("data_types.jl")
 include("process_fits.jl")
-# include("process_galactic_foreground.jl")
+include("process_galactic_foreground.jl")
 include("make_artifacts.jl")
 
 

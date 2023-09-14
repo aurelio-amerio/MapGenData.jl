@@ -3,3 +3,7 @@ function ud_grade(input_map, output_nside; threshold=abs(1e-6UNSEEN), pess=false
     map_out.pixels .*= ((input_map.resolution.nside//output_nside)^-power)
     return map_out
 end 
+
+function convert(::Type{Matrix{T}}, v::Vector{W}) where {T<:Real, W<:HealpixMap}
+    return convert(Matrix{T}, stack(v))
+end
