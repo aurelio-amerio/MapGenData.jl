@@ -87,30 +87,51 @@ function convolve_fg_model_with_PSF(model_heal::AbstractMatrix, lmax::Int, PSF_t
     return model_heal_smoothed, energy_fg1[filter]
 end
 
+function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::String, nside::Int)
+    dict_hr = load(hres_path)
+    model_heal, energy_fg1 = dict_hr["gf_v07"], dict_hr["E"]
+    # we now downgrade the maps and then export them
+    model_heal_downgraded = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
+    
+    steps = 0
+    for i in eachindex(energy_fg1)
+        steps += length(energy_fg1[i])
+    end
+    p = Progress(steps)
+
+    @threads for i in eachindex(jld2_artifact.Emin_array)
+        model_downgraded_i = zeros(12*nside^2, length(energy_fg1[i]))
+        for j in eachindex(energy_fg1[i])
+            model_downgraded_i[:,j] = ud_grade(HealpixMap{Float64, RingOrder}(model_heal[i][:,j]), nside).pixels
+            next!(p)
+        end
+        model_heal_downgraded[i] = model_downgraded_i
+    end
+    return model_heal_downgraded, energy_fg1
+end
+
 
 function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false)
-    @info "Processing galactic foreground v7 map"
     nside = jld2_artifact.nside
+    @info "Processing galactic foreground v7 map at nside=$nside"
     # npix = 12*nside^2
     PSF_theta = get_PSF_theta(jld2_artifact)
-    hres_path = "$artifact_cache/galactic_foreground_v07_nside1024.jld2"
-    outpath = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
+    hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
+    outpath = "$(artifact_cache)/galactic_foreground_v07_nside$(nside).jld2"
+
+    
 
     if ispath(outpath) && !overwrite
-        @info "File $outpath already exists, skipping"
+        @info "File galactic_foreground_v07_nside$(nside).jld2 already exists, skipping"
         return outpath
     end
 
     if ispath(hres_path) && nside < 1024
-        dict_hr = load(hres_path)
-        model_heal, energy_fg1 = dict_hr["gf_v07"], dict_hr["E"]
-        # we now downgrade the maps and then export them
-        model_heal_downgraded = Vector{Matrix{Float64}}(undef, length(energy_fg1))
-        for i in eachindex(energy_fg1)
-            model_heal_downgraded[i] = ud_grade(HealpixMap{Float64, RingOrder}(model_heal[:,i]), nside)
-        end
+
+        model_heal_downgraded, energy_fg1 = downgrade_smoothed_template(jld2_artifact, hres_path, nside)
+        
         dict_ = Dict{String, Any}()
-        dict_["gf_v07"] = convert(Matrix, model_heal_downgraded)
+        dict_["gf_v07"] = model_heal_downgraded
         dict_["E"] = energy_fg1
         save(outpath, dict_, compress=compress)
         return outpath
@@ -144,8 +165,8 @@ function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jl
     npix = 12*nside^2
 
     # now create an inteprolation in E for ease of use
-    nodes = (collect(1:npix), log10.(energy))
-    itp = Interpolations.interpolate(nodes, log10.(model), (Gridded(Constant()),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+    nodes = (1:npix, log10.(energy))
+    itp = Interpolations.interpolate(nodes, log10.(model), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
     gf_model_interpolated(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     return gf_model_interpolated, energy*u"MeV"
 end
@@ -167,10 +188,10 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jl
 end
 
 # #todo edit
-function write_gf_v07_map_as_jld2(jld2_artifact::JLD2Artifact, outdir::String; compress=true)
-    @info "Processing galactic foreground v7 map"
+function write_gf_v07_counts_map_as_jld2(jld2_artifact::JLD2Artifact, outdir::String; compress=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
+    @info "Processing galactic foreground v7 map at nside=$nside"
     smoothed_gf_path = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
     data_smoothed_gf = load(smoothed_gf_path)
     model_smoothed, energy_fg1_filtered = data_smoothed_gf["gf_v07"], data_smoothed_gf["E"]

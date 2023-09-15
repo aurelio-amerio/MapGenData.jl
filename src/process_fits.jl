@@ -179,7 +179,7 @@ function get_PSF_theta(jld2_artifact::JLD2Artifact)
     nbins = size(PSF_matrix)[2]
     bin_arr = 1:nbins
     nodes = (theta, bin_arr)
-    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),Gridded(Constant())))
+    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoINterp()))
     PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
     return PSF_theta
 end
@@ -209,8 +209,9 @@ function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
     
     npix = 12*nside^2
     # now we create the interpolation
-    nodes = (collect(1:npix), log10.(En_arr))
-    itp = Interpolations.interpolate(nodes, log10.(map_for_itp), (Gridded(Constant()),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+    nodes = (1:npix, log10.(En_arr))
+    itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+    itp = extrapolate(itp_, Line())
     exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     
     return exposure_map, En_arr

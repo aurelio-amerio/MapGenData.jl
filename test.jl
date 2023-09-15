@@ -6,7 +6,7 @@ using MapGenData
 using HDF5
 using Unitful
 using StaticArrays
-
+using JLD2
 #%%
 hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_1_200_GeV/hdf5"
 artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
@@ -18,9 +18,18 @@ Emin_micro, Emax_micro = MapGenData.get_E_bins(u"MeV")
 
 Emin_macro = Emin_micro[1:5:end]
 Emax_macro = Emax_micro[5:5:end]
-jld2_artifact = JLD2Artifact(artifacts_folder, 1024, "test1", Emin_macro, Emax_macro)
-
 #%%
+jld2_artifact = JLD2Artifact(artifacts_folder, 64, "test1", Emin_macro, Emax_macro)
 MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
 
+
+#%%
+for nside in [1024, 64, 128, 256, 512]
+    jld2_artifact = JLD2Artifact(artifacts_folder, nside, "test1", Emin_macro, Emax_macro)
+    MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
+end
+
+nside = 128
+jld2_artifact = JLD2Artifact(artifacts_folder, nside, "test1", Emin_macro, Emax_macro)
+MapGenData.write_gf_v07_counts_map_as_jld2(jld2_artifact, artifact_cache; compress=true)
 #%%
