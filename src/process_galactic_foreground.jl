@@ -88,49 +88,61 @@ function convolve_fg_model_with_PSF(model_heal::AbstractMatrix, lmax::Int, PSF_t
 end
 
 
-function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact, outdir::String; compress=true)
+function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false)
     @info "Processing galactic foreground v7 map"
     nside = jld2_artifact.nside
+    # npix = 12*nside^2
     PSF_theta = get_PSF_theta(jld2_artifact)
-    
-    # processing the foreground is expensive. 
-    if nside < 512
-        @warn "Computing the smoothed galactic foreground directly at nside=$nside, results may be inaccurate.
-        It is advisable to export the galactic foreground template at nside=1024 first, to allow for map downgrading."
+    hres_path = "$artifact_cache/galactic_foreground_v07_nside1024.jld2"
+    outpath = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
+
+    if ispath(outpath) && !overwrite
+        @info "File $outpath already exists, skipping"
+        return outpath
     end
-    model_heal, energy_fg1 = read_galactic_fg_v07(jld2_artifact)
-    lmax=4*nside
-    # here
-    model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
-    energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
-    for i in eachindex(jld2_artifact.Emin_array)
-        Emin = jld2_artifact.Emin_array[i]*u"MeV"
-        Emax = jld2_artifact.Emax_array[i]*u"MeV"
-        PSF_theta_bini(theta) = PSF_theta(theta, i)
-        model_heal_smoothed[i], energy_fg1_filtered[i] = convolve_fg_model_with_PSF(model_heal, lmax, PSF_theta_bini, energy_fg1; Emin=Emin, Emax=Emax)
+
+    if ispath(hres_path) && nside < 1024
+        dict_hr = load(hres_path)
+        model_heal, energy_fg1 = dict_hr["gf_v07"], dict_hr["E"]
+        # we now downgrade the maps and then export them
+        model_heal_downgraded = Vector{Matrix{Float64}}(undef, length(energy_fg1))
+        for i in eachindex(energy_fg1)
+            model_heal_downgraded[i] = ud_grade(HealpixMap{Float64, RingOrder}(model_heal[:,i]), nside)
+        end
+        dict_ = Dict{String, Any}()
+        dict_["gf_v07"] = convert(Matrix, model_heal_downgraded)
+        dict_["E"] = energy_fg1
+        save(outpath, dict_, compress=compress)
+        return outpath
+    else
+        if nside < 1024
+            @warn "Computing the smoothed galactic foreground directly at nside=$nside, results may be inaccurate.
+            It is advisable to export the galactic foreground template at nside=1024, which will allow for downgrading of the high-res map."
+        end
+        model_heal, energy_fg1 = read_galactic_fg_v07(jld2_artifact)
+        lmax=4*nside
+        # here
+        model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
+        energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
+        for i in eachindex(jld2_artifact.Emin_array)
+            Emin = jld2_artifact.Emin_array[i]*u"MeV"
+            Emax = jld2_artifact.Emax_array[i]*u"MeV"
+            PSF_theta_bini(theta) = PSF_theta(theta, i)
+            model_heal_smoothed[i], energy_fg1_filtered[i] = convolve_fg_model_with_PSF(model_heal, lmax, PSF_theta_bini, energy_fg1; Emin=Emin, Emax=Emax)
+        end
+        dict_ = Dict{String, Any}()
+        dict_["gf_v07"] = model_heal_smoothed
+        dict_["E"] = energy_fg1_filtered
+        save(outpath, dict_, compress=compress)
+        return outpath
     end
-    dict_ = Dict{String, Any}()
-    dict_["gf_v07"] = model_heal_smoothed
-    dict_["E"] = energy_fg1_filtered
-    save("$outdir/galactic_foreground_v07_nside$(nside).jld2", dict_, compress=compress)
-    return "$outdir/galactic_foreground_v07_nside$(nside).jld2"
 end
-#=
+
 function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jld2_artifact::JLD2Artifact)
     nside = jld2_artifact.nside
     # nchannels = length(energy_fg1_filtered)
     npix = 12*nside^2
 
-    # if nside != 1024
-    #     map_for_itp = zeros(npix, nchannels)
-    #     for ch in 1:nchannels
-    #         map_hp = HealpixMap{Float64, RingOrder}(model_heal_smoothed[:,ch])
-    #         map_for_itp[:,ch] .= udgrade(map_hp, nside)
-    #     end
-    # else
-    #     map_for_itp = model_heal_smoothed
-    # end
-    
     # now create an inteprolation in E for ease of use
     nodes = (collect(1:npix), log10.(energy))
     itp = Interpolations.interpolate(nodes, log10.(model), (Gridded(Constant()),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
@@ -157,14 +169,36 @@ end
 # #todo edit
 function write_gf_v07_map_as_jld2(jld2_artifact::JLD2Artifact, outdir::String; compress=true)
     @info "Processing galactic foreground v7 map"
-    model, energy = read_galactic_fg_v07(jld2_artifact)
-    
-    itp, _ = interpolate_galactic_fg(model_heal_smoothed::AbstractArray, energy_fg1_filtered::AbstractArray, jld2_artifact::JLD2Artifact)
-    gf_integral = process_galactic_fg_smoothed_counts(itp, exppath, nside, Emin, Emax, kind)
-    dict_ = Dict{String, HealpixMap{Float64, RingOrder}}()
+    # first we load the galactic foreground model that we computed previously
+    nside = jld2_artifact.nside
+    smoothed_gf_path = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
+    data_smoothed_gf = load(smoothed_gf_path)
+    model_smoothed, energy_fg1_filtered = data_smoothed_gf["gf_v07"], data_smoothed_gf["E"]
+
+    # now we interpolate the model in energy and store the interpolations in an array
+    gf_model_interpolated = Vector{Function}(undef, length(jld2_artifact.Emin_array))
+
+    for i in eachindex(gf_model_interpolated )
+        gf_model_interpolated[i], _ = interpolate_galactic_fg(model_smoothed[i], energy_fg1_filtered[i], jld2_artifact)
+    end
+
+    # now we compute the integral of the model in each energy bin in order to obtain the foreground model in units of counts
+    gf_integral = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+    @info "Convolving the smoothed foreground template with the exposure map and computing the integral in each energy bin"
+    @showprogress for i in eachindex(gf_integral)
+        Emin = jld2_artifact.Emin_array[i]*u"MeV"
+        Emax = jld2_artifact.Emax_array[i]*u"MeV"
+        gf_integral[i] = process_galactic_fg_smoothed_counts(gf_model_interpolated[i], jld2_artifact; Emin=Emin, Emax=Emax)
+    end
+
+    # now we save the foreground model
+    dict_ = Dict{String, Any}()
     dict_["gf_v07"] = gf_integral
-    
-    save("$dir/gf_smoothed_counts_v07_nside$(nside)_$(ustrip(u"GeV",Emin))-$(ustrip(u"GeV",Emax))GeV_$(kind).jld2", dict_,compress=true)
-    return
+    dict_["Emin"] = jld2_artifact.Emin_array
+    dict_["Emax"] = jld2_artifact.Emax_array
+
+    outpath = joinpath(outdir, "galactic_foreground_v07_counts_nside$(nside).jld2")
+    save(outpath, dict_, compress=compress)
+    return outpath
 end
-=#
+

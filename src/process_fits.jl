@@ -216,33 +216,6 @@ function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
     return exposure_map, En_arr
 end
 
-#=
 
 
-
-
-
-#TODO update with UCV/SV
-
-
-function write_PSF_as_jld2(psfpath, dir)
-    @info "Processing PSF" 
-    theta, PSF = get_PSF_arrays(psfpath)
-    dict_ = Dict{String, Vector}()
-    dict_["theta"] = theta
-    dict_["PSF"] = PSF
-    save("$dir/w9w765_SV_t1_PSF.jld2", dict_, compress=compress)
-    return
-end
-
-
-# function get_pls_mask(dir, nside::Int)
-#     pls_file_path = joinpath(dir, "mask_gll_psc_v30.jld2")
-#     mask_tmp = HealpixMap{Float64, RingOrder}(Float64.(load(pls_file_path)["mask"]))
-
-#     mask_float = udgrade(mask_tmp, nside)
-#     return [pix <= 1e-12 ? false : true for pix in mask_float.pixels]
-# end
-
-=#
 

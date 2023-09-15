@@ -21,6 +21,6 @@ Emax_macro = Emax_micro[5:5:end]
 jld2_artifact = JLD2Artifact(artifacts_folder, 1024, "test1", Emin_macro, Emax_macro)
 
 #%%
-MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact, artifacts_folder; compress=true)
+MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
 
 #%%
