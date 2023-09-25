@@ -185,8 +185,7 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jl
     return gf_integral
 end
 
-
-function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
+function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
     @info "Processing galactic foreground v7 map at nside=$nside"
@@ -218,6 +217,35 @@ function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Arti
 
     outpath = joinpath(outdir, "galactic_foreground_smoothed_counts.jld2")
     save(outpath, dict_, compress=compress)
+    if nside == 1024
+        cp(outpath, joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2"), force=true)
+    end
     return outpath
+end
+
+function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
+    nside = jld2_artifact.nside
+    gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
+    if nside < 1024 && isfile(gfpath)
+        # we can skip the computation, and we shall downgrade the model
+        data_1024 = load(gfpath)
+        gf_1024 = data_1024["gf_v07"]
+
+        data = Dict{String, Any}()
+        data["Emin"] = data_1024["Emin"]
+        data["Emax"] = data_1024["Emax"]
+
+        gf_integral = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+        for i in eachindex(gf_integral)
+            gf_integral[i] = ud_grade(gf_1024[i], nside, power=-2)
+        end
+        data["gf_v07"] = gf_integral
+
+        outpath = joinpath(outdir, "galactic_foreground_smoothed_counts.jld2")
+        save(outpath, data, compress=compress)
+        return outpath
+    else
+        return _write_gf_v07_counts_map_as_jld2_helper(outdir, jld2_artifact; compress=compress)
+    end
 end
 
