@@ -1,6 +1,6 @@
 module MapGenData
 
-export export_artifacts, FITSArtifact, JLD2Artifact
+export make_fits_artifact, make_jld2_artifacts, FITSArtifact, JLD2Artifact
 
 artifact_cache = ""
 
