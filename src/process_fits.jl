@@ -179,7 +179,7 @@ function get_PSF_theta(jld2_artifact::JLD2Artifact)
     nbins = size(PSF_matrix)[2]
     bin_arr = 1:nbins
     nodes = (theta, bin_arr)
-    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoINterp()))
+    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoInterp()))
     PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
     return PSF_theta
 end
