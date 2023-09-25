@@ -119,8 +119,6 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
     hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
     outpath = "$(artifact_cache)/galactic_foreground_v07_nside$(nside).jld2"
 
-    
-
     if ispath(outpath) && !overwrite
         @info "File galactic_foreground_v07_nside$(nside).jld2 already exists, skipping"
         return outpath
@@ -187,8 +185,8 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jl
     return gf_integral
 end
 
-# #todo edit
-function write_gf_v07_counts_map_as_jld2(jld2_artifact::JLD2Artifact, outdir::String; compress=true)
+
+function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
     @info "Processing galactic foreground v7 map at nside=$nside"
@@ -218,7 +216,7 @@ function write_gf_v07_counts_map_as_jld2(jld2_artifact::JLD2Artifact, outdir::St
     dict_["Emin"] = jld2_artifact.Emin_array
     dict_["Emax"] = jld2_artifact.Emax_array
 
-    outpath = joinpath(outdir, "galactic_foreground_v07_counts_nside$(nside).jld2")
+    outpath = joinpath(outdir, "galactic_foreground_smoothed_counts.jld2")
     save(outpath, dict_, compress=compress)
     return outpath
 end

@@ -54,9 +54,54 @@ function make_fits_artifact(fits_artifact::FITSArtifact)
     return "$(fits_artifact.outdir)/fits.tar.gz", "SHA256: $sha256_fits"
 end
 
+function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
+    tmp_dir = mktempdir()
+    nside = jld2_artifact.nside
+    cache = mkpath(joinpath(artifact_cache, "nside$nside"))
+
+    @info "Processing jld2 artifacts for nside $nside"
+    @info "Exporting Fermi map"
+    if ! isfile(joinpath(cache,"fermi_map.jld2"))
+        write_fermi_map_as_jld2(cache, jld2_artifact; compress=true)
+    end
+    cp(joinpath(cache,"fermi_map.jld2"), joinpath(tmp_dir, "fermi_map.jld2"), force=true)
+
+    @info "Exporting exposure map"
+    if ! isfile(joinpath(cache,"exposure_map.jld2"))
+        write_exposure_map_as_jld2(cache, jld2_artifact; compress=true)
+    end
+    cp(joinpath(cache,"exposure_map.jld2"), joinpath(tmp_dir, "exposure_map.jld2"), force=true)
+
+    @info "Exporting PSF"
+    if ! isfile(joinpath(cache,"PSF.jld2"))
+        write_PSF_as_jld2(cache, jld2_artifact; compress=true)
+    end
+    cp(joinpath(cache,"PSF.jld2"), joinpath(tmp_dir, "PSF.jld2"), force=true)
+
+    @info "Exporting galactic foreground"
+    # make sure we have already computed the foreground at nside 1024
+    if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside$(nside).jld2"))
+        jld2_artifact_tmp = JLD2Artifact(artifacts_folder, nside, "tmp", jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+        write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
+    end
+
+    if ! isfile(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"))
+        write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
+        write_gf_v07_counts_map_as_jld2(artifact_cache,jld2_artifact; compress=true)
+    end
+    cp(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_smoothed_counts.jld2"), force=true)
+
+    @info "Creating tarball"
+    jld2_artifact_id = artifact_from_directory(tmp_dir)
+    sha256_jld2 = Pkg.archive_artifact(jld2_artifact_id, "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz")
+    return "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz", "SHA256: $sha256_jld2"
+end
+
+
 function delete_cache()
     delete_scratch!(MapGenData, "artifact_cache")
 end
+
 #=
 
 # dest = mkpath("artifacts")

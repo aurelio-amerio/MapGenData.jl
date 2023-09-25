@@ -1,7 +1,7 @@
 universe = vanilla
 
 executable              = start_cpujob.sh
-arguments               = ""
+arguments               = "20" 
 getenv = True
 
 Request_Memory = 50960

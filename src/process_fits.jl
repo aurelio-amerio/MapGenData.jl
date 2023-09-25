@@ -187,7 +187,7 @@ end
 function write_PSF_as_jld2(outdir, jld2_artifact::JLD2Artifact; compress=true)
     @info "Processing PSF" 
     theta, PSF = get_PSF_arrays(jld2_artifact)
-    dict_ = Dict{String, Vector}()
+    dict_ = Dict{String, Any}()
     dict_["theta"] = theta
     dict_["PSF"] = PSF
     dict_["Emin"] = jld2_artifact.Emin_array # MeV
