@@ -26,7 +26,7 @@ Emax_macro = Emax_micro[5:5:end]
 
 #%%
 for nside in [1024, 64, 128, 256, 512]
-    jld2_artifact = JLD2Artifact(artifacts_folder, nside, "test1", Emin_macro, Emax_macro)
+    jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
     make_jld2_artifacts(jld2_artifact)
 end
 #%%
