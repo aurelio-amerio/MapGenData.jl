@@ -29,6 +29,7 @@ for nside in [1024, 64, 128, 256, 512]
     jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
     make_jld2_artifacts(jld2_artifact)
 end
+
 #%%
 # add_artifact!(
 #     "Artifacts.toml",
