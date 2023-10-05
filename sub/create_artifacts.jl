@@ -11,7 +11,7 @@ using Base.Threads
 #%%
 @info "Using nthreads = $(nthreads())"
 
-hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.5_1000_GeV"
+hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.5_1000_GeV/hdf5"
 artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
 artifact_cache = MapGenData.artifact_cache
 
