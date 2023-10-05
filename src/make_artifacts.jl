@@ -81,7 +81,7 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
     @info "Exporting galactic foreground"
     # make sure we have already computed the foreground at nside 1024
     if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside$(nside).jld2"))
-        jld2_artifact_tmp = JLD2Artifact(artifacts_folder, nside, "tmp", jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+        jld2_artifact_tmp = JLD2Artifact(artifacts_cache, nside, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
         write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
     end
 
@@ -97,6 +97,7 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
     return "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz", "SHA256: $sha256_jld2"
 end
 
-function delete_cache()
+function clear_cache()
     delete_scratch!(MapGenData, "artifact_cache")
+    @info "Cache cleared"
 end
