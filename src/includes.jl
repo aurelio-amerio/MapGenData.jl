@@ -16,4 +16,4 @@ using StaticArrays
 using Unitful
 using Unitful: Energy, EnergyFreeUnits
 
-import Base: convert
+import Base: convert, Matrix

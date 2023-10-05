@@ -4,6 +4,10 @@ function ud_grade(input_map, output_nside; threshold=abs(1e-6UNSEEN), pess=false
     return map_out
 end 
 
-function convert(::Type{Matrix{T}}, v::Vector{W}) where {T<:Real, W<:HealpixMap}
-    return convert(Matrix{T}, stack(v))
+function convert(::Type{T}, v::AbstractVector{W}) where {T<:Matrix, W<:HealpixMap}
+    return convert(T, stack(v))
+end
+
+function Matrix(v::AbstractVector{W}) where {W<:HealpixMap}
+    return convert(Matrix{Float64}, v)
 end
