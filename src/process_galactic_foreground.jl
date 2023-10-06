@@ -11,8 +11,10 @@ end
 function apply_W_beam(map::HealpixMap{T,O}, lmax::Int, PSF_theta::Function) where {T<:AbstractFloat, O<:RingOrder}
     alm_map = map2alm(map, lmax=lmax)
     W_beam_arr = zeros(lmax+1) 
+    p = Progress(lmax, desc="W_beam:")
     @threads for l in 0:lmax
         W_beam_arr[l+1] = W_beam_fermi(l, PSF_theta)
+        next!(p)
     end
     almxfl!(alm_map, W_beam_arr)
     map_smoothed = alm2map(alm_map, npix2nside(length(map)))
@@ -81,8 +83,8 @@ function convolve_fg_model_with_PSF(model_heal::AbstractMatrix, lmax::Int, PSF_t
     emax_ = ustrip(u"MeV", Emax)
     filter_ = (1:length(energy_fg1))[emin_.<=energy_fg1.<=emax_]
     filter = max(minimum(filter_)-1, 1):min(maximum(filter_)+1,length(energy_fg1))
-
-    model_heal_smoothed = _convolve_fg_model_with_PSF_helper(model_heal[:,filter], lmax, PSF_theta)
+    model_heal_filtered = view(model_heal,:,filter)
+    model_heal_smoothed = _convolve_fg_model_with_PSF_helper(model_heal_filtered, lmax, PSF_theta)
     model_heal_smoothed[model_heal_smoothed.<0] .= 1e-100
     return model_heal_smoothed, energy_fg1[filter]
 end
@@ -143,7 +145,9 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
         # here
         model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
         energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
-        for i in eachindex(jld2_artifact.Emin_array)
+        
+        @info "Convolving the foreground template with the PSF"
+        @showprogress for i in eachindex(jld2_artifact.Emin_array)
             Emin = jld2_artifact.Emin_array[i]*u"MeV"
             Emax = jld2_artifact.Emax_array[i]*u"MeV"
             PSF_theta_bini(theta) = PSF_theta(theta, i)
