@@ -149,7 +149,7 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
             It is advisable to export the galactic foreground template at nside=1024, which will allow for downgrading of the high-res map."
         end
         model_heal, energy_fg1 = read_galactic_fg_v07(jld2_artifact)
-        lmax=4*nside
+        lmax=3*nside-1
         # here
         model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
         energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
