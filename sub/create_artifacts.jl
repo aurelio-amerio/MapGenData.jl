@@ -19,7 +19,7 @@ artifact_cache = MapGenData.artifact_cache
 
 fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 
-make_fits_artifact(fits_artifact)
+# make_fits_artifact(fits_artifact)
 
 Earr = [500, 1000, 2000, 5000, 10_000, 50_000, 200_000, 1_000_000]*u"MeV"
 
@@ -27,7 +27,10 @@ Emin_macro = ustrip.(u"MeV", Earr[1:end-1])
 Emax_macro = ustrip.(u"MeV", Earr[2:end])
 
 #%%
-for nside in [1024, 64, 128, 256, 512]
-    jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
-    make_jld2_artifacts(jld2_artifact)
-end
+# for nside in [1024, 64, 128, 256, 512]
+#     jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
+#     make_jld2_artifacts(jld2_artifact)
+# end
+
+jld2_artifact = JLD2Artifact(artifacts_folder, 64, Emin_macro, Emax_macro)
+make_jld2_artifacts(jld2_artifact)

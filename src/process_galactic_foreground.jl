@@ -11,6 +11,16 @@
     return min(2*pi*(i1+i2),1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
 end
 
+@memoize function get_W_beam_arr(lmax::Int, PSF_theta::Function)
+    W_beam_arr = zeros(lmax+1) 
+    p = Progress(lmax, desc="W_beam:", enabled=false)
+    @threads for l in 0:lmax
+        W_beam_arr[l+1] = W_beam_fermi(l, PSF_theta)
+        next!(p)
+    end
+    return W_beam_arr
+end
+
 function apply_W_beam(map::AbstractVector, lmax::Int, PSF_theta::Function)
     map_ = HealpixMap{Float64, RingOrder}(map)
     return apply_W_beam(map_, lmax, PSF_theta)
@@ -18,12 +28,14 @@ end
 
 function apply_W_beam(map::HealpixMap{T,O}, lmax::Int, PSF_theta::Function) where {T<:AbstractFloat, O<:RingOrder}
     alm_map = map2alm(map, lmax=lmax)
-    W_beam_arr = zeros(lmax+1) 
-    p = Progress(lmax, desc="W_beam:")
-    @threads for l in 0:lmax
-        W_beam_arr[l+1] = W_beam_fermi(l, PSF_theta)
-        next!(p)
-    end
+    W_beam_arr = get_W_beam_arr(lmax, PSF_theta)
+    almxfl!(alm_map, W_beam_arr)
+    map_smoothed = alm2map(alm_map, npix2nside(length(map)))
+    return map_smoothed
+end
+
+function apply_W_beam(map::HealpixMap{T,O}, W_beam_arr::AbstractVector) where {T<:AbstractFloat, O<:RingOrder}
+    alm_map = map2alm(map, lmax=lmax)
     almxfl!(alm_map, W_beam_arr)
     map_smoothed = alm2map(alm_map, npix2nside(length(map)))
     return map_smoothed
@@ -78,10 +90,13 @@ function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
 end
 
  
-function _convolve_fg_model_with_PSF_helper(model_heal::AbstractMatrix, lmax::Int, PSF_theta::Function)
+function _convolve_fg_model_with_PSF_helper(model_heal::AbstractMatrix, lmax::Int, PSF_theta::Function; verbose=false)
     model_heal_smoothed = zeros(size(model_heal))
-    @showprogress "Applying PSF to the FG template" for i in 1:size(model_heal)[2]
-        model_heal_smoothed[:,i] .= apply_W_beam(view(model_heal,:,i), lmax, PSF_theta) 
+    W_beam_arr = get_W_beam_arr(lmax, PSF_theta)
+    p = Progress(size(model_heal)[2], desc="PSF:", enabled=verbose)
+    for i in 1:size(model_heal)[2]
+        model_heal_smoothed[:,i] .= apply_W_beam(view(model_heal,:,i), W_beam_arr) 
+        next!(p)
     end
     return model_heal_smoothed
 end
@@ -97,7 +112,7 @@ function convolve_fg_model_with_PSF(model_heal::AbstractMatrix, lmax::Int, PSF_t
     return model_heal_smoothed, energy_fg1[filter]
 end
 
-function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::String, nside::Int)
+function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::String, nside::Int; verbose=true)
     dict_hr = load(hres_path)
     model_heal, energy_fg1 = dict_hr["gf_v07"], dict_hr["E"]
     # we now downgrade the maps and then export them
@@ -107,7 +122,7 @@ function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::Str
     for i in eachindex(energy_fg1)
         steps += length(energy_fg1[i])
     end
-    p = Progress(steps)
+    p = Progress(steps, desc="Downgrading:", enabled=verbose)
 
     @threads for i in eachindex(jld2_artifact.Emin_array)
         model_downgraded_i = zeros(12*nside^2, length(energy_fg1[i]))
@@ -121,7 +136,7 @@ function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::Str
 end
 
 
-function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false)
+function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false, verbose=true)
     nside = jld2_artifact.nside
     @info "Processing galactic foreground v7 map at nside=$nside"
     # npix = 12*nside^2
@@ -155,11 +170,13 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
         energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
         
         @info "Convolving the foreground template with the PSF"
-        @showprogress for i in eachindex(jld2_artifact.Emin_array)
+        p = Progress(length(jld2_artifact.Emin_array), desc="Conv:", enabled=verbose)
+        for i in eachindex(jld2_artifact.Emin_array)
             Emin = jld2_artifact.Emin_array[i]*u"MeV"
             Emax = jld2_artifact.Emax_array[i]*u"MeV"
             PSF_theta_bini(theta) = PSF_theta(theta, i)
             model_heal_smoothed[i], energy_fg1_filtered[i] = convolve_fg_model_with_PSF(model_heal, lmax, PSF_theta_bini, energy_fg1; Emin=Emin, Emax=Emax)
+            next!(p)
         end
         dict_ = Dict{String, Any}()
         dict_["gf_v07"] = model_heal_smoothed
@@ -181,14 +198,14 @@ function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jl
     return gf_model_interpolated, energy*u"MeV"
 end
 
-function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jld2_artifact::JLD2Artifact; Emin::Energy, Emax::Energy)
+function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jld2_artifact::JLD2Artifact; Emin::Energy, Emax::Energy, verbose=true)
     nside = jld2_artifact.nside
     exp_map_E, _ = get_exposure_map_interpolation(jld2_artifact)
     npix = 12*nside^2
     srpixel = 4pi/npix
     
     gf_integral = HealpixMap{Float64, RingOrder}(nside)
-    p = Progress(npix)
+    p = Progress(npix, enabled=verbose)
     @threads for pix in 1:npix
         arg(En) = gf_model_interpolated(pix, En)*exp_map_E(pix, En)*srpixel
         gf_integral[pix] = ustrip(u"MeV", quadgk(arg, Emin, Emax, rtol=1e-4)[1])
@@ -197,7 +214,7 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jl
     return gf_integral
 end
 
-function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
+function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=true, verbose=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
     @info "Processing galactic foreground v7 map at nside=$nside"
@@ -215,10 +232,12 @@ function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::
     # now we compute the integral of the model in each energy bin in order to obtain the foreground model in units of counts
     gf_integral = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
     @info "Convolving the smoothed foreground template with the exposure map and computing the integral in each energy bin"
-    @showprogress for i in eachindex(gf_integral)
+    p = Progress(length(gf_integral), enabled=verbose)
+    for i in eachindex(gf_integral)
         Emin = jld2_artifact.Emin_array[i]*u"MeV"
         Emax = jld2_artifact.Emax_array[i]*u"MeV"
         gf_integral[i] = process_galactic_fg_smoothed_counts(gf_model_interpolated[i], jld2_artifact; Emin=Emin, Emax=Emax)
+        next!(p)
     end
 
     # now we save the foreground model
