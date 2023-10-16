@@ -27,10 +27,7 @@ Emin_macro = ustrip.(u"MeV", Earr[1:end-1])
 Emax_macro = ustrip.(u"MeV", Earr[2:end])
 
 #%%
-# for nside in [1024, 64, 128, 256, 512]
-#     jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
-#     make_jld2_artifacts(jld2_artifact)
-# end
-
-jld2_artifact = JLD2Artifact(artifacts_folder, 64, Emin_macro, Emax_macro)
-make_jld2_artifacts(jld2_artifact)
+for nside in [1024, 64, 128, 256, 512]
+    jld2_artifact = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
+    make_jld2_artifacts(jld2_artifact)
+end

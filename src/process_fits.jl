@@ -211,7 +211,7 @@ function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
     # now we create the interpolation
     nodes = (1:npix, log10.(En_arr))
     itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
-    itp = extrapolate(itp_, Line())
+    itp = extrapolate(itp_, (Throw(), Line()))
     exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     
     return exposure_map, En_arr

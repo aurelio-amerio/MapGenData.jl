@@ -193,14 +193,14 @@ function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jl
 
     # now create an inteprolation in E for ease of use
     nodes = (1:npix, log10.(energy))
-    itp = Interpolations.interpolate(nodes, log10.(model), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+    itp_ = Interpolations.interpolate(nodes, log10.(model), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+    itp = extrapolate(itp_, (Throw(), Line()))
     gf_model_interpolated(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     return gf_model_interpolated, energy*u"MeV"
 end
 
-function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, jld2_artifact::JLD2Artifact; Emin::Energy, Emax::Energy, verbose=true)
+function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, exp_map_E::Function, jld2_artifact::JLD2Artifact; Emin::Energy, Emax::Energy, verbose=true)
     nside = jld2_artifact.nside
-    exp_map_E, _ = get_exposure_map_interpolation(jld2_artifact)
     npix = 12*nside^2
     srpixel = 4pi/npix
     
@@ -231,12 +231,14 @@ function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::
 
     # now we compute the integral of the model in each energy bin in order to obtain the foreground model in units of counts
     gf_integral = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
+    
+    exp_map_E, _ = get_exposure_map_interpolation(jld2_artifact)
     @info "Convolving the smoothed foreground template with the exposure map and computing the integral in each energy bin"
     p = Progress(length(gf_integral), enabled=verbose)
     for i in eachindex(gf_integral)
         Emin = jld2_artifact.Emin_array[i]*u"MeV"
         Emax = jld2_artifact.Emax_array[i]*u"MeV"
-        gf_integral[i] = process_galactic_fg_smoothed_counts(gf_model_interpolated[i], jld2_artifact; Emin=Emin, Emax=Emax)
+        gf_integral[i] = process_galactic_fg_smoothed_counts(gf_model_interpolated[i], exp_map_E, jld2_artifact; Emin=Emin, Emax=Emax)
         next!(p)
     end
 
