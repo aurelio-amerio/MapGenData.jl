@@ -138,7 +138,7 @@ end
 
 function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false, verbose=true)
     nside = jld2_artifact.nside
-    @info "Processing galactic foreground v7 map at nside=$nside"
+    @info "Smoothing galactic foreground v7 map at nside=$nside"
     # npix = 12*nside^2
     PSF_theta = get_PSF_theta(jld2_artifact)
     hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
@@ -217,7 +217,7 @@ end
 function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=true, verbose=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
-    @info "Processing galactic foreground v7 map at nside=$nside"
+    @info "Convolving the galactic foreground v7 map at nside=$nside with the exposure map"
     smoothed_gf_path = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
     data_smoothed_gf = load(smoothed_gf_path)
     model_smoothed, energy_fg1_filtered = data_smoothed_gf["gf_v07"], data_smoothed_gf["E"]
@@ -260,6 +260,7 @@ function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Arti
     nside = jld2_artifact.nside
     gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
     if nside < 1024 && isfile(gfpath)
+        @info "Downgrading the galactic foreground counts map from nside=1024 to nside=$nside"
         # we can skip the computation, and we shall downgrade the model
         data_1024 = load(gfpath)
         gf_1024 = data_1024["gf_v07"]

@@ -24,6 +24,12 @@ hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_fron
 artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
 artifact_cache = MapGenData.artifact_cache
 
+gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
+
+isfile(gfpath)
+hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
+isfile(hres_path)
+
 Earr = [500, 1000, 2000, 5000, 10_000, 50_000, 200_000, 1_000_000] * u"MeV"
 
 Emin_macro = ustrip.(u"MeV", Earr[1:end-1])

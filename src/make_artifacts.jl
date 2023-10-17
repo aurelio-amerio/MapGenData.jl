@@ -80,8 +80,9 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
 
     @info "Exporting galactic foreground"
     # make sure we have already computed the foreground at nside 1024
-    if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside$(nside).jld2"))
-        jld2_artifact_tmp = JLD2Artifact(artifact_cache, nside, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+    if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside1024.jld2"))
+        @warn "Computing smoothed galactic foreground at nside 1024"
+        jld2_artifact_tmp = JLD2Artifact(artifact_cache, 1024, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
         write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
     end
 
