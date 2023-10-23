@@ -13,6 +13,7 @@ using ProgressMeter
 using QuadGK
 using BenchmarkTools
 using MultiQuad
+using Logging
 
 using PyPlot
 #%%
@@ -36,8 +37,8 @@ Emin_macro = ustrip.(u"MeV", Earr[1:end-1])
 Emax_macro = ustrip.(u"MeV", Earr[2:end])
 
 #%%
-jld2_artifact = JLD2Artifact(artifacts_folder, 1024, Emin_macro, Emax_macro)
+jld2_artifact = JLD2Artifact("./", 1024, Emin_macro, Emax_macro)
 
-# MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
+MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
 #%%
-MapGenData.write_gf_v07_counts_map_as_jld2("./", jld2_artifact; compress=true)
+# MapGenData.write_gf_v07_counts_map_as_jld2("./", jld2_artifact; compress=true)

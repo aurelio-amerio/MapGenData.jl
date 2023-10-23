@@ -21,8 +21,8 @@ end
     return W_beam_arr
 end
 
-function apply_W_beam(map::AbstractVector, lmax::Int, PSF_theta::Function)
-    map_ = HealpixMap{Float64, RingOrder}(map)
+function apply_W_beam(map::AbstractVector{T}, lmax::Int, PSF_theta::Function) where {T<:Real}
+    map_ = HealpixMap{T, RingOrder}(map)
     return apply_W_beam(map_, lmax, PSF_theta)
 end
 
@@ -35,10 +35,16 @@ function apply_W_beam(map::HealpixMap{T,O}, lmax::Int, PSF_theta::Function) wher
 end
 
 function apply_W_beam(map::HealpixMap{T,O}, W_beam_arr::AbstractVector) where {T<:AbstractFloat, O<:RingOrder}
+    lmax = length(W_beam_arr)-1
     alm_map = map2alm(map, lmax=lmax)
     almxfl!(alm_map, W_beam_arr)
     map_smoothed = alm2map(alm_map, npix2nside(length(map)))
     return map_smoothed
+end
+
+function apply_W_beam(map::AbstractVector{T}, W_beam_arr::AbstractVector) where {T<:Real}
+    map_ = HealpixMap{T, RingOrder}(map)
+    return apply_W_beam(map_, W_beam_arr)
 end
 
 ##### 
@@ -136,7 +142,7 @@ function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::Str
 end
 
 
-function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=true, overwrite=false, verbose=true)
+function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=false, overwrite=false, verbose=true)
     nside = jld2_artifact.nside
     @info "Smoothing galactic foreground v7 map at nside=$nside"
     # npix = 12*nside^2
@@ -214,7 +220,7 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, ex
     return gf_integral
 end
 
-function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=true, verbose=true)
+function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=false, verbose=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
     @info "Convolving the galactic foreground v7 map at nside=$nside with the exposure map"
@@ -256,7 +262,7 @@ function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::
     return outpath
 end
 
-function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=true)
+function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=false)
     nside = jld2_artifact.nside
     gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
     if nside < 1024 && isfile(gfpath)

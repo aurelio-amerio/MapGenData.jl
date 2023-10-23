@@ -1,6 +1,6 @@
 universe = vanilla
 
-executable              = /bin/bash
+executable              = ""
 arguments               = "" 
 getenv = True
 
