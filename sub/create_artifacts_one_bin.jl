@@ -9,7 +9,7 @@ using StaticArrays
 using JLD2
 using Base.Threads
 #%%
-MapGenData.clear_cache()
+# MapGenData.clear_cache()
 #%%
 @info "Using nthreads = $(nthreads())"
 
@@ -19,8 +19,8 @@ artifact_cache = MapGenData.artifact_cache
 
 fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 
-@info "Start creating FITS artifacts"
-make_fits_artifact(fits_artifact)
+# @info "Start creating FITS artifacts"
+# make_fits_artifact(fits_artifact)
 
 Earr = [1000, 10_000]*u"MeV"
 

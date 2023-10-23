@@ -177,11 +177,21 @@ end
 function get_PSF_theta(jld2_artifact::JLD2Artifact)
     theta, PSF_matrix = get_PSF_arrays(jld2_artifact)
     nbins = size(PSF_matrix)[2]
-    bin_arr = 1:nbins
-    nodes = (theta, bin_arr)
-    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoInterp()))
-    PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
-    return PSF_theta
+    if nbins > 1
+        bin_arr = 1:nbins
+        nodes = (theta, bin_arr)
+        itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoInterp()))
+        PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
+        return PSF_theta
+    else
+        nodes = (theta,)
+        itp_ = Interpolations.interpolate(nodes, log10.(vec(PSF_matrix)), Gridded(Linear()))
+        function PSF_theta_1d(theta, bin::Int) 
+            @assert bin==1 "bin must be 1 if only one energy bin is present"
+            return 10 .^ itp_(rad2deg(theta))
+        end
+        return PSF_theta_1d
+    end
 end
 
 function write_PSF_as_jld2(outdir, jld2_artifact::JLD2Artifact; compress=true)
