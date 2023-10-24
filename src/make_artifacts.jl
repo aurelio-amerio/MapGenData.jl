@@ -116,6 +116,6 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
 end
 
 function clear_cache()
-    delete_scratch!(MapGenData, "artifact_cache")
+    delete_scratch!(MapGenData, artifact_cache_name)
     @info "Cache cleared"
 end
