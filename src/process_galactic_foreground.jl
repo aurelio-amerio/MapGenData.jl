@@ -95,6 +95,42 @@ function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
     return model_heal, energy_fg1
 end
 
+function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
+    nside = jld2_artifact.nside
+    res = Resolution(nside)
+    npix = 12 * nside^2
+
+    # galactic diffuse map
+    filepath = joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit")
+    file = FITS(filepath, "r")
+    energy_fg1 = read(file[2], "Energy")
+    model_ = Float64.(read(file[1]))
+    close(file)
+
+    model = permutedims(model_, (3,2,1))
+    eneb_fg = length(energy_fg1)
+
+    dec2 = zeros(npix)
+    ra2 = zeros(npix)
+    for j in 1:npix
+        (dec2[j], ra2[j]) = pix2angRing(res, j)
+    end
+    nres = 8 # 8
+    dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
+    ra2 = ( ( -ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres
+
+    model_heal = ones((npix,eneb_fg))
+
+    ra2[ra2.>2879].=2879
+    dec2[dec2.>1440].=1440
+
+    for ii in eachindex(energy_fg1)
+        model_heal[:,ii] .= map_coordinates(model[ii,:,:],[dec2,ra2]) 
+    end
+
+    return model_heal, energy_fg1
+end
+
  
 function _convolve_fg_model_with_PSF_helper(model_heal::AbstractMatrix, lmax::Int, PSF_theta::Function; verbose=false)
     model_heal_smoothed = zeros(size(model_heal))
@@ -120,7 +156,7 @@ end
 
 function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::String, nside::Int; verbose=true)
     dict_hr = load(hres_path)
-    model_heal, energy_fg1 = dict_hr["gf_v07"], dict_hr["E"]
+    model_heal, energy_fg1 = dict_hr["gf"], dict_hr["E"]
     # we now downgrade the maps and then export them
     model_heal_downgraded = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
     
@@ -142,16 +178,16 @@ function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::Str
 end
 
 
-function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress=false, overwrite=false, verbose=true)
+function write_gf_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; version=7, compress=false, overwrite=false, verbose=true)
     nside = jld2_artifact.nside
-    @info "Smoothing galactic foreground v7 map at nside=$nside"
+    @info "Smoothing galactic foreground v$(version) map at nside=$nside"
     # npix = 12*nside^2
     PSF_theta = get_PSF_theta(jld2_artifact)
-    hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
-    outpath = "$(artifact_cache)/galactic_foreground_v07_nside$(nside).jld2"
+    hres_path = "$(artifact_cache)/galactic_foreground_v0$(version)_nside1024.jld2"
+    outpath = "$(artifact_cache)/galactic_foreground_v0$(version)_nside$(nside).jld2"
 
     if ispath(outpath) && !overwrite
-        @info "File galactic_foreground_v07_nside$(nside).jld2 already exists, skipping"
+        @info "File galactic_foreground_v0$(version)_nside$(nside).jld2 already exists, skipping"
         return outpath
     end
 
@@ -160,7 +196,7 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
         model_heal_downgraded, energy_fg1 = downgrade_smoothed_template(jld2_artifact, hres_path, nside)
         
         dict_ = Dict{String, Any}()
-        dict_["gf_v07"] = model_heal_downgraded
+        dict_["gf"] = model_heal_downgraded
         dict_["E"] = energy_fg1
         save(outpath, dict_, compress=compress)
         return outpath
@@ -169,7 +205,13 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
             @warn "Computing the smoothed galactic foreground directly at nside=$nside, results may be inaccurate.
             It is advisable to export the galactic foreground template at nside=1024, which will allow for downgrading of the high-res map."
         end
-        model_heal, energy_fg1 = read_galactic_fg_v07(jld2_artifact)
+        if version == 7
+            model_heal, energy_fg1 = read_galactic_fg_v07(jld2_artifact)
+        elseif version == 5
+            model_heal, energy_fg1 = read_galactic_fg_v05(jld2_artifact)
+        else
+            error("Version $version not supported")
+        end
         lmax=3*nside-1
         # here
         model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
@@ -185,7 +227,7 @@ function write_gf_v07_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; compress
             next!(p)
         end
         dict_ = Dict{String, Any}()
-        dict_["gf_v07"] = model_heal_smoothed
+        dict_["gf"] = model_heal_smoothed
         dict_["E"] = energy_fg1_filtered
         save(outpath, dict_, compress=compress)
         return outpath
@@ -220,13 +262,13 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, ex
     return gf_integral
 end
 
-function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; compress=false, verbose=true)
+function _write_gf_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2Artifact; version=7, compress=false, verbose=true)
     # first we load the galactic foreground model that we computed previously
     nside = jld2_artifact.nside
-    @info "Convolving the galactic foreground v7 map at nside=$nside with the exposure map"
-    smoothed_gf_path = "$artifact_cache/galactic_foreground_v07_nside$(nside).jld2"
+    @info "Convolving the galactic foreground map at nside=$nside with the exposure map"
+    smoothed_gf_path = "$artifact_cache/galactic_foreground_v0$(version)_nside$(nside).jld2"
     data_smoothed_gf = load(smoothed_gf_path)
-    model_smoothed, energy_fg1_filtered = data_smoothed_gf["gf_v07"], data_smoothed_gf["E"]
+    model_smoothed, energy_fg1_filtered = data_smoothed_gf["gf"], data_smoothed_gf["E"]
 
     # now we interpolate the model in energy and store the interpolations in an array
     gf_model_interpolated = Vector{Function}(undef, length(jld2_artifact.Emin_array))
@@ -250,26 +292,26 @@ function _write_gf_v07_counts_map_as_jld2_helper(outdir::String, jld2_artifact::
 
     # now we save the foreground model
     dict_ = Dict{String, Any}()
-    dict_["gf_v07"] = gf_integral
+    dict_["gf"] = gf_integral
     dict_["Emin"] = jld2_artifact.Emin_array
     dict_["Emax"] = jld2_artifact.Emax_array
 
-    outpath = joinpath(outdir, "galactic_foreground_smoothed_counts.jld2")
+    outpath = joinpath(outdir, "galactic_foreground_v0$(version)_smoothed_counts.jld2")
     save(outpath, dict_, compress=compress)
     if nside == 1024
-        cp(outpath, joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2"), force=true)
+        cp(outpath, joinpath(artifact_cache, "galactic_foreground_v0$(version)_smoothed_counts_nside1024.jld2"), force=true)
     end
     return outpath
 end
 
-function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; compress=false)
+function write_gf_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Artifact; version=7, compress=false)
     nside = jld2_artifact.nside
-    gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
+    gfpath = joinpath(artifact_cache, "galactic_foreground_v0$(version)_smoothed_counts_nside1024.jld2")
     if nside < 1024 && isfile(gfpath)
         @info "Downgrading the galactic foreground counts map from nside=1024 to nside=$nside"
         # we can skip the computation, and we shall downgrade the model
         data_1024 = load(gfpath)
-        gf_1024 = data_1024["gf_v07"]
+        gf_1024 = data_1024["gf"]
 
         data = Dict{String, Any}()
         data["Emin"] = data_1024["Emin"]
@@ -279,13 +321,13 @@ function write_gf_v07_counts_map_as_jld2(outdir::String, jld2_artifact::JLD2Arti
         for i in eachindex(gf_integral)
             gf_integral[i] = ud_grade(gf_1024[i], nside, power=-2)
         end
-        data["gf_v07"] = gf_integral
+        data["gf"] = gf_integral
 
-        outpath = joinpath(outdir, "galactic_foreground_smoothed_counts.jld2")
+        outpath = joinpath(outdir, "galactic_foreground_v0$(version)_smoothed_counts.jld2")
         save(outpath, data, compress=compress)
         return outpath
     else
-        return _write_gf_v07_counts_map_as_jld2_helper(outdir, jld2_artifact; compress=compress)
+        return _write_gf_counts_map_as_jld2_helper(outdir, jld2_artifact; version=version, compress=compress)
     end
 end
 

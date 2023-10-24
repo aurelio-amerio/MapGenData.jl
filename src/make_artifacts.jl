@@ -43,7 +43,18 @@ function make_fits_artifact(fits_artifact::FITSArtifact)
         end
     end
 
+    if ! isfile(joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit"))
+        if isfile(joinpath(fits_artifact.fitsdir, "gll_iem_v05_rev1.fit"))
+            cp(joinpath(fits_artifact.fitsdir, "gll_iem_v05_rev1.fit"), joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit"), force=true)
+        else
+            gll_iem_url = "https://fermi.gsfc.nasa.gov/ssc/data/analysis/software/aux/gll_iem_v05_rev1.fit"
+            Downloads.download(gll_iem_url, joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit"))
+        end
+    end
+
+
     cp(joinpath(artifact_cache, "fits", "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)
+    cp(joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit"), joinpath(tmp_dir, "gll_iem_v05_rev1.fit"), force=true)
 
     mkpath(fits_artifact.outdir)
 
@@ -80,17 +91,23 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
 
     @info "Exporting galactic foreground"
     # make sure we have already computed the foreground at nside 1024
-    if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside1024.jld2"))
-        @warn "Computing smoothed galactic foreground at nside 1024"
-        jld2_artifact_tmp = JLD2Artifact(artifact_cache, 1024, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
-        write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
-    end
+    # if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside1024.jld2"))
+    #     @warn "Computing smoothed galactic foreground at nside 1024"
+    #     jld2_artifact_tmp = JLD2Artifact(artifact_cache, 1024, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+    #     write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
+    # end
 
-    if ! isfile(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"))
-        write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
-        write_gf_v07_counts_map_as_jld2(cache, jld2_artifact; compress=true)
+    if ! isfile(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"))
+        write_gf_map_smoothed_as_jld2(jld2_artifact, version=7)
+        write_gf_counts_map_as_jld2(cache, jld2_artifact; version=7, compress=false)
     end
-    cp(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_smoothed_counts.jld2"), force=true)
+    cp(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v07_smoothed_counts.jld2"), force=true)
+
+    if ! isfile(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"))
+        write_gf_map_smoothed_as_jld2(jld2_artifact, version=5)
+        write_gf_counts_map_as_jld2(cache, jld2_artifact; version=5, compress=false)
+    end
+    cp(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v05_smoothed_counts.jld2"), force=true)
 
     @info "Creating tarball"
     jld2_artifact_id = artifact_from_directory(tmp_dir)

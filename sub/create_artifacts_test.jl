@@ -15,6 +15,9 @@ using BenchmarkTools
 using MultiQuad
 using Logging
 
+using PyCall
+hp = pyimport("healpy")
+
 using PyPlot
 #%%
 # MapGenData.clear_cache()
@@ -25,11 +28,10 @@ hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_fron
 artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
 artifact_cache = MapGenData.artifact_cache
 
-gfpath = joinpath(artifact_cache, "galactic_foreground_smoothed_counts_nside1024.jld2")
+fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 
-isfile(gfpath)
-hres_path = "$(artifact_cache)/galactic_foreground_v07_nside1024.jld2"
-isfile(hres_path)
+@info "Start creating FITS artifacts"
+make_fits_artifact(fits_artifact)
 
 Earr = [500, 1000, 2000, 5000, 10_000, 50_000, 200_000, 1_000_000] * u"MeV"
 
@@ -38,7 +40,12 @@ Emax_macro = ustrip.(u"MeV", Earr[2:end])
 
 #%%
 jld2_artifact = JLD2Artifact("./", 1024, Emin_macro, Emax_macro)
+fg5 = MapGenData.read_galactic_fg_v05(jld2_artifact)
 
-MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
+#%%
+plt.clf()
+hp.mollview(fg5[1][:,end], title="Galactic foreground", unit="flux", norm="log")
+plt.gcf()
+# MapGenData.write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
 #%%
 # MapGenData.write_gf_v07_counts_map_as_jld2("./", jld2_artifact; compress=true)
