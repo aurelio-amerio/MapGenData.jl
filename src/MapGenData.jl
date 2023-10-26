@@ -5,6 +5,9 @@ export make_fits_artifact, make_jld2_artifacts, FITSArtifact, JLD2Artifact
 artifact_cache = ""
 artifact_cache_name = ""
 
+fits_cache = ""
+
+
 include("includes.jl")
 include("utils.jl")
 include("data_types.jl")
@@ -21,6 +24,8 @@ function __init__()
         global artifact_cache_name = "artifact_cache"
     end
     global artifact_cache = @get_scratch!(artifact_cache_name)
+
+    global fits_cache = @get_scratch!("fits_cache")
 end
 
 end

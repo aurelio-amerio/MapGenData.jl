@@ -20,7 +20,8 @@ artifact_cache = MapGenData.artifact_cache
 fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 
 @info "Start creating FITS artifacts"
-make_fits_artifact(fits_artifact)
+MapGenData.fetch_fermilat_data(fits_artifact)
+MapGenData.make_fits_artifact(fits_artifact)
 
 Earr = [500, 1000, 2000, 5000, 10_000, 50_000, 200_000, 1_000_000]*u"MeV"
 
@@ -42,6 +43,7 @@ for nside in [1024, 64, 128, 256, 512]
     jld2_artifact_ = JLD2Artifact(artifacts_folder, nside, Emin_macro, Emax_macro)
     make_jld2_artifacts(jld2_artifact_)
 end
+
 
 
 

@@ -64,7 +64,7 @@ function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
     npix = 12 * nside^2
 
     # galactic diffuse map
-    filepath = joinpath(artifact_cache, "fits", "gll_iem_v07.fits")
+    filepath = joinpath(fits_cache, "gll_iem_v07.fits")
 
     file = FITS(filepath, "r")
     energy_fg1 = read(file[2], "energy")
@@ -101,7 +101,7 @@ function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
     npix = 12 * nside^2
 
     # galactic diffuse map
-    filepath = joinpath(artifact_cache, "fits", "gll_iem_v05_rev1.fit")
+    filepath = joinpath(fits_cache, "gll_iem_v05_rev1.fit")
     file = FITS(filepath, "r")
     energy_fg1 = read(file[2], "Energy")
     model_ = Float64.(read(file[1]))
