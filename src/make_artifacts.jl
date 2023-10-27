@@ -1,49 +1,72 @@
-# make the artifact for the fits files
-function make_fits_artifact(fits_artifact::FITSArtifact)
-    tmp_dir = mktempdir()
-    mkpath(joinpath(artifact_cache, "fits"))
-    # tmp_dir = mkpath("/tmp/tmp_art")
+function make_artifacts(fits_artifact::FITSArtifact, jld2_artifact::JLD2Artifact; skip_fits=false, skip_jld2=false)
+    fetch_fermilat_data(fits_artifact)
+    if ! skip_fits
+        make_fits_artifact(fits_artifact)
+    end
+    if ! skip_jld2
+        make_jld2_artifacts(jld2_artifact)
+    end
+    return
+end
+
+function fetch_fermilat_data(fits_artifact::FITSArtifact)
     @info "Copying .h5 fits files"
     #first we copy all the files to the scratch directory, 
     #then we copy them to the temp directory to make the artifact
-    if ! isfile(joinpath(artifact_cache, "gtbin.h5"))
-        cp(joinpath(fits_artifact.fitsdir, "gtbin.h5"), joinpath(artifact_cache, "fits", "gtbin.h5"), force=true)
+    if ! isfile(joinpath(fits_cache, "gtbin.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtbin.h5"), joinpath(fits_cache, "gtbin.h5"), force=true)
     end
-    if ! isfile(joinpath(artifact_cache, "gtexpcube2.h5"))
-        cp(joinpath(fits_artifact.fitsdir, "gtexpcube2.h5"), joinpath(artifact_cache, "fits", "gtexpcube2.h5"), force=true)
+    if ! isfile(joinpath(fits_cache, "gtexpcube2.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtexpcube2.h5"), joinpath(fits_cache, "gtexpcube2.h5"), force=true)
     end
-    if ! isfile(joinpath(artifact_cache, "gtpsf.h5"))
-        cp(joinpath(fits_artifact.fitsdir, "gtpsf.h5"), joinpath(artifact_cache, "fits", "gtpsf.h5"), force=true)
+    if ! isfile(joinpath(fits_cache, "gtpsf.h5"))
+        cp(joinpath(fits_artifact.fitsdir, "gtpsf.h5"), joinpath(fits_cache, "gtpsf.h5"), force=true)
     end
-
-    # copy from the artifact cache to the tmp directory
-    cp(joinpath(artifact_cache, "fits", "gtbin.h5"), joinpath(tmp_dir, "gtbin.h5"), force=true)
-    cp(joinpath(artifact_cache, "fits", "gtexpcube2.h5"), joinpath(tmp_dir, "gtexpcube2.h5"), force=true)
-    cp(joinpath(artifact_cache, "fits", "gtpsf.h5"), joinpath(tmp_dir, "gtpsf.h5"), force=true)
-    
 
     @info "Fetching gll_psc"
     #4FGL-DR4 catalog
     gll_psc_url = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/14yr_catalog/gll_psc_v32.fit"
     
-    if ! isfile(joinpath(artifact_cache, "fits", "gll_psc_v32.fit"))
-        Downloads.download(gll_psc_url, joinpath(artifact_cache, "fits","gll_psc_v32.fit"))
+    if ! isfile(joinpath(fits_cache, "gll_psc_v32.fit"))
+        Downloads.download(gll_psc_url, joinpath(fits_cache,"gll_psc_v32.fit"))
     end
 
-    cp(joinpath(artifact_cache, "fits", "gll_psc_v32.fit"), joinpath(tmp_dir, "gll_psc_v32.fit"), force=true)
-
-    @info "Fetching foreground template"
+    @info "Fetching foreground template v7"
     #foreground template
-    if ! isfile(joinpath(artifact_cache, "fits", "gll_iem_v07.fits"))
+    if ! isfile(joinpath(fits_cache, "gll_iem_v07.fits"))
         if isfile(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"))
-            cp(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"), joinpath(artifact_cache, "fits", "gll_iem_v07.fits"), force=true)
+            cp(joinpath(fits_artifact.fitsdir, "gll_iem_v07.fits"), joinpath(fits_cache, "gll_iem_v07.fits"), force=true)
         else
             gll_iem_url = "https://fermi.gsfc.nasa.gov/ssc/data/analysis/software/aux/4fgl/gll_iem_v07.fits"
-            Downloads.download(gll_iem_url, joinpath(artifact_cache, "fits", "gll_iem_v07.fits"))
+            Downloads.download(gll_iem_url, joinpath(fits_cache, "gll_iem_v07.fits"))
         end
     end
 
-    cp(joinpath(artifact_cache, "fits", "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)
+    @info "Fetching foreground template v5"
+    if ! isfile(joinpath(fits_cache, "gll_iem_v05_rev1.fit"))
+        if isfile(joinpath(fits_artifact.fitsdir, "gll_iem_v05_rev1.fit"))
+            cp(joinpath(fits_artifact.fitsdir, "gll_iem_v05_rev1.fit"), joinpath(fits_cache, "gll_iem_v05_rev1.fit"), force=true)
+        else
+            gll_iem_url = "https://fermi.gsfc.nasa.gov/ssc/data/analysis/software/aux/gll_iem_v05_rev1.fit"
+            Downloads.download(gll_iem_url, joinpath(fits_cache, "gll_iem_v05_rev1.fit"))
+        end
+    end
+    return
+end
+
+# make the artifact for the fits files
+function make_fits_artifact(fits_artifact::FITSArtifact)
+    tmp_dir = mktempdir()
+
+    # copy from the artifact cache to the tmp directory
+    # cp(joinpath(fits_cache, "gtbin.h5"), joinpath(tmp_dir, "gtbin.h5"), force=true)
+    # cp(joinpath(fits_cache, "gtexpcube2.h5"), joinpath(tmp_dir, "gtexpcube2.h5"), force=true)
+    # cp(joinpath(fits_cache, "gtpsf.h5"), joinpath(tmp_dir, "gtpsf.h5"), force=true)
+
+    cp(joinpath(fits_cache, "gll_psc_v32.fit"), joinpath(tmp_dir, "gll_psc_v32.fit"), force=true)
+
+    # cp(joinpath(fits_cache, "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)
+    # cp(joinpath(fits_cache, "gll_iem_v05_rev1.fit"), joinpath(tmp_dir, "gll_iem_v05_rev1.fit"), force=true)
 
     mkpath(fits_artifact.outdir)
 
@@ -80,16 +103,34 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
 
     @info "Exporting galactic foreground"
     # make sure we have already computed the foreground at nside 1024
-    if ! isfile(joinpath(artifact_cache, "galactic_foreground_v07_nside$(nside).jld2"))
-        jld2_artifact_tmp = JLD2Artifact(artifacts_cache, nside, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
-        write_gf_v07_map_smoothed_as_jld2(jld2_artifact_tmp)
-    end
+    # if ! isfile(joinpath(artifact_cache, "galactic_foreground_v7_nside1024.jld2"))
+    #     let
+    #         @info "Computing smoothed galactic foreground v07 at nside 1024"
+    #         jld2_artifact_tmp = JLD2Artifact("./", 1024, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+    #         write_gf_map_smoothed_as_jld2(jld2_artifact_tmp, version=7)
+    #     end
+    # end
 
-    if ! isfile(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"))
-        write_gf_v07_map_smoothed_as_jld2(jld2_artifact)
-        write_gf_v07_counts_map_as_jld2(cache, jld2_artifact; compress=true)
+    # if ! isfile(joinpath(artifact_cache, "galactic_foreground_v05_nside1024.jld2"))
+    #     let
+    #         @info "Computing smoothed galactic foreground v5 at nside 1024"
+    #         jld2_artifact_tmp = JLD2Artifact("./", 1024, jld2_artifact.Emin_array, jld2_artifact.Emax_array)
+    #         write_gf_map_smoothed_as_jld2(jld2_artifact_tmp, version=5)
+    #     end
+    # end
+
+    # now we compute the gf as a counts map
+    if ! isfile(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"))
+        write_gf_map_smoothed_as_jld2(jld2_artifact, version=7)
+        write_gf_counts_map_as_jld2(cache, jld2_artifact; version=7, compress=false)
     end
-    cp(joinpath(cache,"galactic_foreground_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_smoothed_counts.jld2"), force=true)
+    cp(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v07_smoothed_counts.jld2"), force=true)
+
+    if ! isfile(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"))
+        write_gf_map_smoothed_as_jld2(jld2_artifact, version=5)
+        write_gf_counts_map_as_jld2(cache, jld2_artifact; version=5, compress=false)
+    end
+    cp(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v05_smoothed_counts.jld2"), force=true)
 
     @info "Creating tarball"
     jld2_artifact_id = artifact_from_directory(tmp_dir)
@@ -97,7 +138,10 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
     return "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz", "SHA256: $sha256_jld2"
 end
 
-function clear_cache()
-    delete_scratch!(MapGenData, "artifact_cache")
+function clear_cache(;clear_fermilat_data=false)
+    delete_scratch!(MapGenData, artifact_cache_name)
+    if clear_fermilat_data
+        delete_scratch!(MapGenData, "fits_cache")
+    end
     @info "Cache cleared"
 end

@@ -13,7 +13,7 @@ function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin
 end
 
 function get_E_bins()
-    filepath = joinpath(artifact_cache, "fits", "gtbin.h5")
+    filepath = joinpath(fits_cache, "gtbin.h5")
     @assert isfile(filepath) "gtbin.h5 not found. Run `make_fits_artifact` first"
     fid = h5open(filepath, "r") 
     Emin_ = fid["EBOUNDS/DATA/E_MIN"][:] #keV
@@ -30,7 +30,7 @@ end
 
 function read_fermi_map(jld2_artifact::JLD2Artifact)
     nside = jld2_artifact.nside
-    filepath = joinpath(artifact_cache, "fits", "gtbin.h5")
+    filepath = joinpath(fits_cache, "gtbin.h5")
     @assert isfile(filepath) "gtbin.h5 not found. Run `make_fits_artifact` first"
 
     Emin_micro, Emax_micro = get_E_bins()
@@ -120,7 +120,7 @@ end
 
 function read_exposure_map(jld2_artifact::JLD2Artifact)
     nside = jld2_artifact.nside
-    filepath = joinpath(artifact_cache, "fits", "gtexpcube2.h5")
+    filepath = joinpath(fits_cache, "gtexpcube2.h5")
 
     Emin_micro, Emax_micro = get_E_bins()
 
@@ -142,7 +142,7 @@ function write_exposure_map_as_jld2(outdir, jld2_artifact::JLD2Artifact; compres
 end
 
 function get_PSF_arrays(jld2_artifact::JLD2Artifact)
-    filepath = joinpath(artifact_cache, "fits", "gtpsf.h5")
+    filepath = joinpath(fits_cache, "gtpsf.h5")
 
     fid = h5open(filepath, "r")
 
@@ -177,11 +177,21 @@ end
 function get_PSF_theta(jld2_artifact::JLD2Artifact)
     theta, PSF_matrix = get_PSF_arrays(jld2_artifact)
     nbins = size(PSF_matrix)[2]
-    bin_arr = 1:nbins
-    nodes = (theta, bin_arr)
-    itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoInterp()))
-    PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
-    return PSF_theta
+    if nbins > 1
+        bin_arr = 1:nbins
+        nodes = (theta, bin_arr)
+        itp_ = Interpolations.interpolate(nodes, log10.(PSF_matrix), (Gridded(Linear()),NoInterp()))
+        PSF_theta(theta, bin::Int) = 10 .^ itp_(rad2deg(theta), bin)
+        return PSF_theta
+    else
+        nodes = (theta,)
+        itp_ = Interpolations.interpolate(nodes, log10.(vec(PSF_matrix)), Gridded(Linear()))
+        function PSF_theta_1d(theta, bin::Int) 
+            @assert bin==1 "bin must be 1 if only one energy bin is present"
+            return 10 .^ itp_(rad2deg(theta))
+        end
+        return PSF_theta_1d
+    end
 end
 
 function write_PSF_as_jld2(outdir, jld2_artifact::JLD2Artifact; compress=true)
@@ -199,7 +209,7 @@ end
 function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
 
     nside = jld2_artifact.nside
-    filepath = joinpath(artifact_cache, "fits", "gtexpcube2.h5")
+    filepath = joinpath(fits_cache, "gtexpcube2.h5")
 
     Emin_micro, Emax_micro = get_E_bins()
     En_arr = (Emin_micro .+ Emax_micro) ./ 2
@@ -211,7 +221,7 @@ function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
     # now we create the interpolation
     nodes = (1:npix, log10.(En_arr))
     itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
-    itp = extrapolate(itp_, Line())
+    itp = extrapolate(itp_, (Throw(), Line()))
     exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     
     return exposure_map, En_arr
