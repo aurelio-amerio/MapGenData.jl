@@ -7,9 +7,9 @@ getenv = True
 Request_Memory = 50960
 Request_cpus = 20
 
-log                     = condor_logs/cpujob.log
-output                  = condor_logs/outfile.out
-error                   = condor_logs/errors.err
+log                     = condor_logs/cpujob_interactive.log
+output                  = condor_logs/outfile_interactive.out
+error                   = condor_logs/errors_interactive.err
 
 # cpu job
 #+testJob = True

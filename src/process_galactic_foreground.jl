@@ -1,15 +1,15 @@
-# function W_beam_fermi(l::Int, PSF_theta::Function)
-#     arg(theta) = sin(theta)*Pl(cos(theta), l)*PSF_theta(theta)
-#     return min(2*pi*quadgk(arg, 0, deg2rad(19), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
-# end
-
 @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
     arg(theta) = sin(theta)*Pl(cos(theta), l)*PSF_theta(theta)
-    np = max(1000, l)
-    i1 = quad(arg, 0, deg2rad(2), method=:gausslegendre, order=np)[1]
-    i2 = quad(arg, deg2rad(2), deg2rad(19), method=:gausslegendre, order=np)[1]
-    return min(2*pi*(i1+i2),1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
+    return min(2*pi*quadgk(arg, 0, deg2rad(2), deg2rad(19), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
 end
+
+# @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
+#     arg(theta) = sin(theta)*Pl(cos(theta), l)*PSF_theta(theta)
+#     np = max(1000, l)
+#     i1 = quad(arg, 0, deg2rad(2), method=:gausslegendre, order=np)[1]
+#     i2 = quad(arg, deg2rad(2), deg2rad(19), method=:gausslegendre, order=np)[1]
+#     return min(2*pi*(i1+i2),1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
+# end
 
 @memoize function get_W_beam_arr(lmax::Int, PSF_theta::Function)
     W_beam_arr = zeros(lmax+1) 
@@ -117,7 +117,7 @@ function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
     end
     nres = 8 # 8
     dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
-    ra2 = ( ( -ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres
+    ra2 = ( ( +ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres #fg v5 uses a different coord convention for the grid
 
     model_heal = ones((npix,eneb_fg))
 

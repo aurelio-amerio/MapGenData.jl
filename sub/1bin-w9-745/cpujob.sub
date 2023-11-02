@@ -1,0 +1,17 @@
+universe = vanilla
+
+executable              = start_cpujob_one_bin_1-10_GeV.sh
+arguments               = "20" 
+getenv = True
+
+Request_Memory = 50960
+Request_cpus = 20
+
+log                     = ../condor_logs/cpujob_one_bin_1_10_GeV.log
+output                  = ../condor_logs/outfile_one_bin_1_10_GeV.out
+error                   = ../condor_logs/errors_one_bin_1_10_GeV.err
+
+# cpu job
+#+testJob = True
+
+queue
