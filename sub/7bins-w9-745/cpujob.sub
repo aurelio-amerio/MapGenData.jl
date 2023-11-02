@@ -1,0 +1,17 @@
+universe = vanilla
+
+executable              = start_cpujob.sh
+arguments               = "20" 
+getenv = True
+
+Request_Memory = 50960
+Request_cpus = 20
+
+log                     = ../condor_logs/cpujob_w9-745.log
+output                  = ../condor_logs/outfile_w9-745.out
+error                   = ../condor_logs/errors_w9-745.err
+
+# cpu job
+#+testJob = True
+
+queue

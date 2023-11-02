@@ -117,7 +117,7 @@ function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
     end
     nres = 8 # 8
     dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
-    ra2 = ( ( -ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres
+    ra2 = ( ( +ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres #fg v5 uses a different coord convention for the grid
 
     model_heal = ones((npix,eneb_fg))
 
