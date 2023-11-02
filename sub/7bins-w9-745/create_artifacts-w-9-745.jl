@@ -1,7 +1,7 @@
 using Pkg
 using Revise
 Pkg.activate(".")
-
+ENV["MapGenData_cache_label"] = "7bins_w9-745"
 using MapGenData
 using HDF5
 using Unitful

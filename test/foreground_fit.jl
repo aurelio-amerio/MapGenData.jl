@@ -2,7 +2,7 @@ using Pkg
 using Revise
 Pkg.activate(".")
 
-ENV["MapGenData_cache_label"] = "1bin"
+ENV["MapGenData_cache_label"] = "1bin_1_10GeV"
 
 using MapGenData
 
@@ -87,14 +87,14 @@ function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
     for j in 1:npix
         (dec2[j], ra2[j]) = pix2angRing(res, j)
     end
-    nres = Int(log2(nside)) #8 # 8
+    nres = 8 # 8
     dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
     ra2 = ( ( -ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres
 
     model_heal = ones((npix,eneb_fg))
 
-    # ra2[ra2.>2879].=2879
-    # dec2[dec2.>1440].=1440
+    ra2[ra2.>2879].=2879
+    dec2[dec2.>1440].=1440
 
     for ii in eachindex(energy_fg1)
         model_heal[:,ii] .= MapGenData.map_coordinates(model[ii,:,:],[dec2,ra2]) 
@@ -184,11 +184,11 @@ end
 #%%
 @info "Using nthreads = $(nthreads())"
 
-hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.5_1000_GeV/hdf5"
-artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
+# hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.5_1000_GeV/hdf5"
+artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts_test"
 artifact_cache = MapGenData.artifact_cache
 
-fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
+# fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 
 # @info "Start creating FITS artifacts"
 # MapGenData.fetch_fermilat_data(fits_artifact)
@@ -201,7 +201,7 @@ Emax_macro = ustrip.(u"MeV", Earr[2:end])
 #%%
 fermi_map = load(joinpath(artifact_cache,"nside1024","fermi_map.jld2"))["fermi_map"]
 exposure_map = load(joinpath(artifact_cache,"nside1024","exposure_map.jld2"))["exposure_map"]
-pls_mask = load("test/pls_mask_1024.jld2")["pls_mask"]
+pls_mask = load("test/pls_mask_1024_2deg.jld2")["pls_mask"]
 #%%
 jld2_artifact = JLD2Artifact(artifacts_folder, 1024 , Emin_macro, Emax_macro)
 #%%
