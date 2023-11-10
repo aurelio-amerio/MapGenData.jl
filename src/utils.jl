@@ -11,3 +11,18 @@ end
 function Matrix(v::AbstractVector{W}) where {W<:HealpixMap}
     return convert(Matrix{Float64}, v)
 end
+
+function isapprox_in(element, list; kwargs...)
+    # Check if the element is approximately equal to any element in the list.
+    any(isapprox(element, el, kwargs...) for el in list)
+end
+
+function approx_geq(x, y; kwargs...)
+    # Check if x is approximately greater than or equal to y.
+    isapprox(x, y, kwargs...) | (x > y)
+end
+
+function approx_leq(x, y; kwargs...)
+    # Check if x is approximately less than or equal to y.
+    isapprox(x, y, kwargs...) | (x < y)
+end

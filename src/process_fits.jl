@@ -1,7 +1,4 @@
-function isapprox_in(element, list; kwargs...)
-    # Check if the element is approximately equal to any element in the list.
-    any(isapprox(element, el, kwargs...) for el in list)
-  end
+
 
 function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin_macro::AbstractVector, Emax_macro::AbstractVector)
     flag = true
@@ -49,11 +46,14 @@ function read_fermi_map(jld2_artifact::JLD2Artifact)
     for i in eachindex(map_binned)
         map_binned[i] = HealpixMap{Float64, RingOrder}(2048)
     end
+
+    Emin_macro = jld2_artifact.Emin_array
+    Emax_macro = jld2_artifact.Emax_array
     
     #fill the map
-    @showprogress "Reading map" for i in eachindex(jld2_artifact.Emin_array)
+    @showprogress "Reading map" for i in eachindex(Emin_macro)
         for j in eachindex(Emin_micro)
-            if (Emin_micro[j] >= jld2_artifact.Emin_array[i]) & (Emax_micro[j] <= jld2_artifact.Emax_array[i])
+            if (approx_geq(Emin_micro[j], Emin_macro[i])) & (approx_leq(Emax_micro[j], Emax_macro[i]))
                 map_binned[i].pixels .+= fid["SKYMAP/DATA"]["CHANNEL$j"][:]
             end
         end
@@ -109,7 +109,7 @@ function _read_exposure_map_helper(nside::Int, filepath::String, Emin_micro::Abs
     map_cache = HealpixMap{Float64, RingOrder}(2048)
     @showprogress "Reading map" for i in eachindex(Emin_macro)
         for j in eachindex(Emin_micro)
-            if (Emin_micro[j] >= Emin_macro[i]) & (Emax_micro[j] <= Emax_macro[i])
+            if (approx_geq(Emin_micro[j], Emin_macro[i])) & (approx_leq(Emax_micro[j], Emax_macro[i]))
                 map_cache.pixels .= fid["HPXEXPOSURES/DATA"]["ENERGY$j"][:]
                 map_binned[i].pixels .+= ud_grade(map_cache, nside)
                 bin_counts[i] += 1
@@ -164,7 +164,7 @@ function get_PSF_arrays(jld2_artifact::JLD2Artifact)
         den = zeros(length(jld2_artifact.Emin_array))
         for k in eachindex(jld2_artifact.Emin_array)
             for j in eachindex(En)
-                if jld2_artifact.Emin_array[k] <= En[j] < jld2_artifact.Emax_array[k]
+                if approx_geq(En[j], jld2_artifact.Emin_array[k]) & (En[j] < jld2_artifact.Emax_array[k])
                     Ej = En[j] ^ (-2.4)
                     num[k] += PSF_mat[theta_i, j] * Ej
                     den[k] += Ej
