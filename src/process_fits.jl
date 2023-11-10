@@ -1,3 +1,8 @@
+function isapprox_in(element, list; kwargs...)
+    # Check if the element is approximately equal to any element in the list.
+    any(isapprox(element, el, kwargs...) for el in list)
+  end
+
 function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin_macro::AbstractVector, Emax_macro::AbstractVector)
     flag = true
     @assert all(Emin_micro .< Emax_micro) "Emin_micro must be < Emax_micro"
@@ -7,8 +12,8 @@ function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin
 
     flag = flag & all(Emin_macro .>= minimum(Emin_micro)) # out of bounds
 
-    flag = flag & all([Emin in Emin_micro for Emin in Emin_macro])
-    flag = flag & all([Emax in Emax_micro for Emax in Emax_macro])
+    flag = flag & all([isapprox_in(Emin, Emin_micro) for Emin in Emin_macro])
+    flag = flag & all([isapprox_in(Emax, Emax_micro) for Emax in Emax_macro])
     return flag
 end
 

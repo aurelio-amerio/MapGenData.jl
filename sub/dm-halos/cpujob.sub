@@ -1,0 +1,15 @@
+universe = vanilla
+
+executable              = start_cpujob.sh
+arguments               = "20" 
+getenv = True
+
+Request_Memory = 60000
+Request_cpus = 20
+
+log                     = ../condor_logs/cpujob_dm_halos.log
+output                  = ../condor_logs/outfile_dm_halos.out
+error                   = ../condor_logs/errors_dm_halos.err
+
+
+queue
