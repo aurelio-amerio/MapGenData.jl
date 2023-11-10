@@ -26,6 +26,7 @@ function __init__()
     global artifact_cache = @get_scratch!(artifact_cache_name)
 
     global fits_cache = @get_scratch!("fits_cache")
+    return
 end
 
 end

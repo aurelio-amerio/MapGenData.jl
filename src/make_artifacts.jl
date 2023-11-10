@@ -144,4 +144,5 @@ function clear_cache(;clear_fermilat_data=false)
         delete_scratch!(MapGenData, "fits_cache")
     end
     @info "Cache cleared"
+    __init__() # reinitialize the cache
 end

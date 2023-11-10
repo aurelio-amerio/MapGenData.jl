@@ -10,7 +10,7 @@ struct JLD2Artifact{S}
     Emax_array::SVector{S, Float64} # MeV
 end
 
-function JLD2Artifact{S}(outdir::String, nside::Int, Emin_array::AbstractVector{Float64}, Emax_array::AbstractVector{Float64}) where {S}
+function JLD2Artifact{S}(outdir::String, nside::Int, Emin_array::Vector{Float64}, Emax_array::Vector{Float64}) where {S}
     @assert nside <= 2048 "nside must be <= 2048"
     @assert ispow2(nside) "nside must be a power of 2"
     Emin_sv = SVector{S, Float64}(Emin_array)
@@ -19,7 +19,6 @@ function JLD2Artifact{S}(outdir::String, nside::Int, Emin_array::AbstractVector{
     # check wheter macrobins are consistent with microbins
     Emin_micro, Emax_micro = get_E_bins()
     @assert check_bins(Emin_micro, Emax_micro, Emin_sv, Emax_sv) "Energy bins are not consistent, make sure that the macrobins can be interpreted as a combination of the microbins contained in the fits files"
-    
     return JLD2Artifact{S}(outdir, nside, Emin_sv, Emax_sv)
 end
 

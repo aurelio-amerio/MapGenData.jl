@@ -14,6 +14,8 @@ function check_bins(Emin_micro::AbstractVector, Emax_micro::AbstractVector, Emin
 
     flag = flag & all([isapprox_in(Emin, Emin_micro) for Emin in Emin_macro])
     flag = flag & all([isapprox_in(Emax, Emax_micro) for Emax in Emax_macro])
+    # flag = flag & all([Emin in Emin_micro for Emin in Emin_macro])
+    # flag = flag & all([Emax in Emax_micro for Emax in Emax_macro])
     return flag
 end
 

@@ -9,7 +9,7 @@ using StaticArrays
 using JLD2
 using Base.Threads
 #%%
-MapGenData.clear_cache()
+# MapGenData.clear_cache(clear_fermilat_data=true)
 #%%
 @info "Using nthreads = $(nthreads())"
 
@@ -42,8 +42,9 @@ Emax_macro = ustrip.(u"MeV", Earr[2:end])
 # first compute the foreground at nside 1024
 let
     jld2_artifact = JLD2Artifact("./", 1024, Emin_macro, Emax_macro)
-
+    @info "exporting galactic foreground v7"
     MapGenData.write_gf_map_smoothed_as_jld2(jld2_artifact, version=7)
+    @info "exporting galactic foreground v5"
     MapGenData.write_gf_map_smoothed_as_jld2(jld2_artifact, version=5)
 end
 
