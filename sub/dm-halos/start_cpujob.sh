@@ -5,4 +5,4 @@ eval "$(conda shell.bash hook)"
 conda activate $JOB_ENVIRONMENT
 
 cd /lhome/ific/a/aamerio/github/MapGenData.jl
-julia --threads $1 sub/7bins/create_artifacts.jl
+julia --threads $1 sub/dm-halos/create_artifacts.jl
