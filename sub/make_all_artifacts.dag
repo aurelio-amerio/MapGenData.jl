@@ -1,0 +1,6 @@
+JOB 1 dm-halos/cpujob.sub
+JOB 2 7bins/cpujob.sub
+JOB 3 1bin-w9-745/cpujob.sub
+
+PARENT 1 CHILD 2
+PARENT 2 CHILD 3

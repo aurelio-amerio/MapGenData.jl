@@ -9,7 +9,7 @@ using StaticArrays
 using JLD2
 using Base.Threads
 #%%
-MapGenData.clear_cache()
+MapGenData.clear_cache(clear_fermilat_data=true)
 #%%
 @info "Using nthreads = $(nthreads())"
 
@@ -44,6 +44,7 @@ for nside in [1024, 64, 128, 256, 512]
     make_jld2_artifacts(jld2_artifact_)
 end
 
+return 1
 
 
 
