@@ -147,11 +147,27 @@ function convolve_fg_model_with_PSF(model_heal::AbstractMatrix, lmax::Int, PSF_t
     emin_ = ustrip(u"MeV", Emin)
     emax_ = ustrip(u"MeV", Emax)
     filter_ = (1:length(energy_fg1))[emin_.<=energy_fg1.<=emax_]
-    filter = max(minimum(filter_)-1, 1):min(maximum(filter_)+1,length(energy_fg1))
-    model_heal_filtered = view(model_heal,:,filter)
-    model_heal_smoothed = _convolve_fg_model_with_PSF_helper(model_heal_filtered, lmax, PSF_theta)
-    model_heal_smoothed[model_heal_smoothed.<0] .= 1e-100
-    return model_heal_smoothed, energy_fg1[filter]
+    if length(filter_) == 0
+        # we extrapolate the foreground model
+        @warn "Extrapolating the foreground model to Emin=$Emin and Emax=$Emax"
+        npix = size(model_heal)[1]
+        knots = (1:npix, log10.(energy_fg1))
+        itp_ = Interpolations.interpolate(knots, log10.(model_heal), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+        itp = extrapolate(itp_, (Throw(), Line()))
+        logEn =  range(log10(emin_), log10(emax_), length=3)
+        model_heal_filtered = 10 .^ itp.(reshape(collect(1:npix),:,1), reshape(collect(logEn),1,:))
+
+        model_heal_smoothed = _convolve_fg_model_with_PSF_helper(model_heal_filtered, lmax, PSF_theta)
+        model_heal_smoothed[model_heal_smoothed.<0] .= 1e-100
+        return model_heal_smoothed, 10 .^logEn
+    
+    else
+        filter = max(minimum(filter_)-1, 1):min(maximum(filter_)+1,length(energy_fg1))
+        model_heal_filtered = view(model_heal,:,filter)
+        model_heal_smoothed = _convolve_fg_model_with_PSF_helper(model_heal_filtered, lmax, PSF_theta)
+        model_heal_smoothed[model_heal_smoothed.<0] .= 1e-100
+        return model_heal_smoothed, energy_fg1[filter]
+    end
 end
 
 function downgrade_smoothed_template(jld2_artifact::JLD2Artifact, hres_path::String, nside::Int; verbose=true)
@@ -222,6 +238,7 @@ function write_gf_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; version=7, c
         for i in eachindex(jld2_artifact.Emin_array)
             Emin = jld2_artifact.Emin_array[i]*u"MeV"
             Emax = jld2_artifact.Emax_array[i]*u"MeV"
+            
             PSF_theta_bini(theta) = PSF_theta(theta, i)
             model_heal_smoothed[i], energy_fg1_filtered[i] = convolve_fg_model_with_PSF(model_heal, lmax, PSF_theta_bini, energy_fg1; Emin=Emin, Emax=Emax)
             next!(p)

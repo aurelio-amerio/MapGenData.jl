@@ -79,6 +79,8 @@ end
 
 function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
     tmp_dir = mktempdir()
+    tmp_dir_fg_v5 = mktempdir()
+    tmp_dir_fg_v7 = mktempdir()
     nside = jld2_artifact.nside
     cache = mkpath(joinpath(artifact_cache, "nside$nside"))
 
@@ -124,18 +126,25 @@ function make_jld2_artifacts(jld2_artifact::JLD2Artifact)
         write_gf_map_smoothed_as_jld2(jld2_artifact, version=7)
         write_gf_counts_map_as_jld2(cache, jld2_artifact; version=7, compress=false)
     end
-    cp(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v07_smoothed_counts.jld2"), force=true)
+    cp(joinpath(cache,"galactic_foreground_v07_smoothed_counts.jld2"), joinpath(tmp_dir_fg_v7, "galactic_foreground_v07_smoothed_counts.jld2"), force=true)
 
     if ! isfile(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"))
         write_gf_map_smoothed_as_jld2(jld2_artifact, version=5)
         write_gf_counts_map_as_jld2(cache, jld2_artifact; version=5, compress=false)
     end
-    cp(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"), joinpath(tmp_dir, "galactic_foreground_v05_smoothed_counts.jld2"), force=true)
+    cp(joinpath(cache,"galactic_foreground_v05_smoothed_counts.jld2"), joinpath(tmp_dir_fg_v5, "galactic_foreground_v05_smoothed_counts.jld2"), force=true)
 
     @info "Creating tarball"
     jld2_artifact_id = artifact_from_directory(tmp_dir)
     sha256_jld2 = Pkg.archive_artifact(jld2_artifact_id, "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz")
-    return "$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz", "SHA256: $sha256_jld2"
+
+    fg7_artifact_id = artifact_from_directory(tmp_dir_fg_v7)
+    sha256_fg7 = Pkg.archive_artifact(fg7_artifact_id, "$(jld2_artifact.outdir)/jld2_data_fg_v7_n$nside.tar.gz")
+
+    fg5_artifact_id = artifact_from_directory(tmp_dir_fg_v5)
+    sha256_fg5 = Pkg.archive_artifact(fg5_artifact_id, "$(jld2_artifact.outdir)/jld2_data_fg_v5_n$nside.tar.gz")
+
+    return #"$(jld2_artifact.outdir)/jld2_data_n$nside.tar.gz", "SHA256: $sha256_jld2"
 end
 
 function clear_cache(;clear_fermilat_data=false)
