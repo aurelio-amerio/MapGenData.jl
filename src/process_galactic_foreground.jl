@@ -228,7 +228,7 @@ function write_gf_map_smoothed_as_jld2(jld2_artifact::JLD2Artifact; version=7, c
         else
             error("Version $version not supported")
         end
-        lmax=3*nside-1
+        lmax=4*nside
         # here
         model_heal_smoothed = Vector{Matrix{Float64}}(undef, length(jld2_artifact.Emin_array))
         energy_fg1_filtered = Vector{Vector{Float64}}(undef, length(jld2_artifact.Emin_array))
