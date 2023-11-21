@@ -25,10 +25,22 @@ function fetch_fermilat_data(fits_artifact::FITSArtifact)
 
     @info "Fetching gll_psc"
     #4FGL-DR4 catalog
-    gll_psc_url = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/14yr_catalog/gll_psc_v32.fit"
+    gll_psc_url_32 = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/14yr_catalog/gll_psc_v32.fit"
+
+    #4FGL-DR3 catalog
+    gll_psc_url_30 = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/12yr_catalog/gll_psc_v30.fit"
+    gll_psc_url_31 = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/12yr_catalog/gll_psc_v31.fit"
+
+    if ! isfile(joinpath(fits_cache, "gll_psc_v30.fit"))
+        Downloads.download(gll_psc_url_30, joinpath(fits_cache,"gll_psc_v30.fit"))
+    end
+
+    if ! isfile(joinpath(fits_cache, "gll_psc_v31.fit"))
+        Downloads.download(gll_psc_url_31, joinpath(fits_cache,"gll_psc_v31.fit"))
+    end
     
     if ! isfile(joinpath(fits_cache, "gll_psc_v32.fit"))
-        Downloads.download(gll_psc_url, joinpath(fits_cache,"gll_psc_v32.fit"))
+        Downloads.download(gll_psc_url_32, joinpath(fits_cache,"gll_psc_v32.fit"))
     end
 
     @info "Fetching foreground template v7"
@@ -63,6 +75,8 @@ function make_fits_artifact(fits_artifact::FITSArtifact)
     # cp(joinpath(fits_cache, "gtexpcube2.h5"), joinpath(tmp_dir, "gtexpcube2.h5"), force=true)
     # cp(joinpath(fits_cache, "gtpsf.h5"), joinpath(tmp_dir, "gtpsf.h5"), force=true)
 
+    cp(joinpath(fits_cache, "gll_psc_v30.fit"), joinpath(tmp_dir, "gll_psc_v30.fit"), force=true)
+    cp(joinpath(fits_cache, "gll_psc_v31.fit"), joinpath(tmp_dir, "gll_psc_v31.fit"), force=true)
     cp(joinpath(fits_cache, "gll_psc_v32.fit"), joinpath(tmp_dir, "gll_psc_v32.fit"), force=true)
 
     # cp(joinpath(fits_cache, "gll_iem_v07.fits"), joinpath(tmp_dir, "gll_iem_v07.fits"), force=true)

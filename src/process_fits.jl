@@ -164,7 +164,7 @@ function get_PSF_arrays(jld2_artifact::JLD2Artifact)
         den = zeros(length(jld2_artifact.Emin_array))
         for k in eachindex(jld2_artifact.Emin_array)
             for j in eachindex(En)
-                if approx_geq(En[j], jld2_artifact.Emin_array[k]) & (En[j] < jld2_artifact.Emax_array[k])
+                if approx_geq(En[j], jld2_artifact.Emin_array[k]) & (approx_leq(En[j], jld2_artifact.Emax_array[k]))
                     Ej = En[j] ^ (-2.4)
                     num[k] += PSF_mat[theta_i, j] * Ej
                     den[k] += Ej
