@@ -1,6 +1,6 @@
 @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
     arg(theta) = sin(theta)*Pl(cos(theta), l)*PSF_theta(theta)
-    return min(2*pi*quadgk(arg, 0, deg2rad(2), deg2rad(19), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
+    return min(2*pi*quadgk(arg, 0, deg2rad(2), deg2rad(29), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
 end
 
 # @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
