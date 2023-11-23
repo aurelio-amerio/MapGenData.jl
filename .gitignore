@@ -5,3 +5,6 @@
 
 .vscode/
 sub/condor_logs/*
+data_1024.jld2
+gf_newversion_v7.jld2
+gf_oldversion_v7.jld2
