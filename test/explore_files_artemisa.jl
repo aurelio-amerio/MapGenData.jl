@@ -7,7 +7,7 @@ using FITSIO
 using Statistics
 using Unitful
 using Healpix
-using ProgressMeter
+using ProgressMeter 
 #%% gtselect
 fname = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_1_10_GeV_w9-745_v2/gtselect.fits"
 file = FITS(fname, "r")
@@ -77,9 +77,13 @@ lmax=nside*4
 PSF_theta = MapGenData.get_PSF_theta(jld2_artifact)
             
 PSF_theta_bini(theta) = PSF_theta(theta, i)
+PSF_theta_bini(0.2432)
 model_smoothed, energy_fg1_filtered = MapGenData.convolve_fg_model_with_PSF(model_heal, lmax, PSF_theta_bini, energy_fg1; Emin=Emin, Emax=Emax)
 
 model_smoothed
+
+model_smoothed[1,1]
+energy_fg1_filtered
 #%% counts map
 # now we interpolate the model in energy and store the interpolations in an array
 gf_model_interpolated = Vector{Function}(undef, length(jld2_artifact.Emin_array))

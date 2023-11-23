@@ -1,6 +1,7 @@
 @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
     arg(theta) = sin(theta)*Pl(cos(theta), l)*PSF_theta(theta)
-    return min(2*pi*quadgk(arg, 0, deg2rad(2), deg2rad(29), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
+    # return min(2*pi*quadgk(arg, 0, deg2rad(2), deg2rad(29), rtol=1e-5)[1],1) # TODO: 19 gradi potrebbero essere pochi, magari meglio suare 29
+    return min(2*pi*quadgk(arg, 0,  deg2rad(29), rtol=1e-5)[1],1) 
 end
 
 # @memoize function W_beam_fermi(l::Int, PSF_theta::Function)
@@ -297,7 +298,7 @@ function _write_gf_counts_map_as_jld2_helper(outdir::String, jld2_artifact::JLD2
     # now we compute the integral of the model in each energy bin in order to obtain the foreground model in units of counts
     gf_integral = Vector{HealpixMap{Float64, RingOrder}}(undef, length(jld2_artifact.Emin_array))
     
-    exp_map_E, _ = get_exposure_map_interpolation(jld2_artifact)
+    exp_map_E = get_exposure_map_interpolation(jld2_artifact)
     @info "Convolving the smoothed foreground template with the exposure map and computing the integral in each energy bin"
     p = Progress(length(gf_integral), enabled=verbose)
     for i in eachindex(gf_integral)

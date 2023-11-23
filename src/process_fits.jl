@@ -213,26 +213,58 @@ function write_PSF_as_jld2(outdir, jld2_artifact::JLD2Artifact; compress=true)
     return "$outdir/PSF.jld2"
 end
 
+# function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
+
+#     nside = jld2_artifact.nside
+#     filepath = joinpath(fits_cache, "gtexpcube2.h5")
+
+#     Emin_micro, Emax_micro = get_E_bins()
+#     # En_arr = (Emin_micro .+ Emax_micro) ./ 2
+#     En_arr = sqrt.(Emin_micro .* Emax_micro) 
+    
+
+#     map_binned = _read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
+#     map_for_itp = convert(Matrix{Float64}, map_binned)
+    
+#     npix = 12*nside^2
+#     # now we create the interpolation
+#     nodes = (1:npix, log10.(En_arr))
+#     itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+#     itp = extrapolate(itp_, (Throw(), Line()))
+#     exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
+    
+#     return exposure_map, En_arr
+# end
+
 function get_exposure_map_interpolation(jld2_artifact::JLD2Artifact)
 
     nside = jld2_artifact.nside
     filepath = joinpath(fits_cache, "gtexpcube2.h5")
 
     Emin_micro, Emax_micro = get_E_bins()
-    En_arr = (Emin_micro .+ Emax_micro) ./ 2
 
-    map_binned = _read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
+    map_binned = MapGenData._read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
     map_for_itp = convert(Matrix{Float64}, map_binned)
     
-    npix = 12*nside^2
-    # now we create the interpolation
-    nodes = (1:npix, log10.(En_arr))
-    itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
-    itp = extrapolate(itp_, (Throw(), Line()))
-    exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
+    function exposure_map(pix::Int, En::Energy) 
+        @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
+        idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
+        
+        return map_for_itp[pix,idx]
+    end
+
+    # function exposure_map(pix::Vector{Int}, En::Energy) 
+    #     @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
+    #     idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
+        
+    #     return map_for_itp[pix,idx]
+    # end
     
-    return exposure_map, En_arr
+    return exposure_map
 end
+
+
+
 
 
 
