@@ -19,56 +19,56 @@ using JLD2
 using PyCall
 Minuit = pyimport("iminuit").Minuit
 #%% using library
-function get_exposure_map_interpolation_modified(jld2_artifact::JLD2Artifact)
+# function get_exposure_map_interpolation_modified(jld2_artifact::JLD2Artifact)
 
-    nside = jld2_artifact.nside
-    filepath = joinpath(MapGenData.fits_cache, "gtexpcube2.h5")
+#     nside = jld2_artifact.nside
+#     filepath = joinpath(MapGenData.fits_cache, "gtexpcube2.h5")
 
-    Emin_micro, Emax_micro = get_E_bins()
-    En_arr = (Emin_micro .+ Emax_micro) ./ 2
+#     Emin_micro, Emax_micro = get_E_bins()
+#     En_arr = (Emin_micro .+ Emax_micro) ./ 2
 
-    map_binned = _read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
-    map_for_itp = convert(Matrix{Float64}, map_binned)
+#     map_binned = _read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
+#     map_for_itp = convert(Matrix{Float64}, map_binned)
     
-    npix = 12*nside^2
-    # now we create the interpolation
-    nodes = (1:npix, log10.(En_arr))
-    itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
-    itp = extrapolate(itp_, (Throw(), Line()))
-    exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
+#     npix = 12*nside^2
+#     # now we create the interpolation
+#     nodes = (1:npix, log10.(En_arr))
+#     itp_ = Interpolations.interpolate(nodes, log10.(map_for_itp), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
+#     itp = extrapolate(itp_, (Throw(), Line()))
+#     exposure_map(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
     
-    return exposure_map, En_arr
-end
+#     return exposure_map, En_arr
+# end
 
 
-function get_exposure_map_interpolation_v3(jld2_artifact::JLD2Artifact)
+# function get_exposure_map_interpolation_v3(jld2_artifact::JLD2Artifact)
 
-    nside = jld2_artifact.nside
-    filepath = joinpath(MapGenData.fits_cache, "gtexpcube2.h5")
+#     nside = jld2_artifact.nside
+#     filepath = joinpath(MapGenData.fits_cache, "gtexpcube2.h5")
 
-    Emin_micro, Emax_micro = MapGenData.get_E_bins()
+#     Emin_micro, Emax_micro = MapGenData.get_E_bins()
 
     
 
-    map_binned = MapGenData._read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
-    map_for_itp = convert(Matrix{Float64}, map_binned)
+#     map_binned = MapGenData._read_exposure_map_helper(nside, filepath, Emin_micro, Emax_micro, Emin_micro, Emax_micro) 
+#     map_for_itp = convert(Matrix{Float64}, map_binned)
     
-    function exposure_map(pix::Int, En::Energy) 
-        @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
-        idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
+#     function exposure_map(pix::Int, En::Energy) 
+#         @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
+#         idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
         
-        return map_for_itp[pix,idx]
-    end
+#         return map_for_itp[pix,idx]
+#     end
 
-    function exposure_map(pix::Vector{Int}, En::Energy) 
-        @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
-        idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
+#     function exposure_map(pix::Vector{Int}, En::Energy) 
+#         @assert Emin_micro[1] <= ustrip(u"MeV", En) <= Emax_micro[end] "Energy out of range"
+#         idx = searchsortedlast(Emin_micro, ustrip(u"MeV",En))
         
-        return map_for_itp[pix,idx]
-    end
+#         return map_for_itp[pix,idx]
+#     end
     
-    return exposure_map
-end
+#     return exposure_map
+# end
 
 #%%
 nside=1024
@@ -80,7 +80,8 @@ jld2_artifact = JLD2Artifact("./", nside, Emin_macro, Emax_macro)
 
 expmap_itp = MapGenData.get_exposure_map_interpolation(jld2_artifact)
 
-@btime expmap_itp(1,1u"GeV")
+expmap_itp(1,1u"GeV")
+expmap_itp(1,1.3u"GeV")
 
 model_heal, energy_fg1 = MapGenData.read_galactic_fg_v07(jld2_artifact)
 

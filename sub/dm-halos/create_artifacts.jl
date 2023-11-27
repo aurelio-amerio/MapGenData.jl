@@ -13,7 +13,7 @@ MapGenData.clear_cache(clear_fermilat_data=true)
 #%%
 @info "Using nthreads = $(nthreads())"
 
-hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.1_1000_GeV_w9-795/hdf5"
+hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.1-1000GeV_dm_halos/hdf5"
 artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts-dm-halos"
 artifact_cache = MapGenData.artifact_cache
 
