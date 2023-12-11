@@ -261,7 +261,7 @@ function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jl
     nodes = (1:npix, log10.(energy))
     itp_ = Interpolations.interpolate(nodes, log10.(model), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
     itp = extrapolate(itp_, (Throw(), Line()))
-    gf_model_interpolated(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En)))
+    gf_model_interpolated(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En))) * u"MeV^-1" # the gf is in units of cm^-2 s^-1 sr^-1 MeV^-1. While cm^-2 s^-1 sr^-1 disappear when multiplying by the exposure and srpix, we need to divide by MeV to get the correct units for the Energy integration
     return gf_model_interpolated, energy*u"MeV"
 end
 
@@ -271,10 +271,11 @@ function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, ex
     srpixel = 4pi/npix
     
     gf_integral = HealpixMap{Float64, RingOrder}(nside)
+    # the gf model is in units of cm^-2 s^-1 sr^-1 MeV^-1, the exposure is in units of cm^2 s, srpixel is the conversion factor between sr and pixel. As a result, the integral is in units of counts per pixel
     p = Progress(npix, enabled=verbose)
     @threads for pix in 1:npix
         arg(En) = gf_model_interpolated(pix, En)*exp_map_E(pix, En)*srpixel
-        gf_integral[pix] = ustrip(u"MeV", quadgk(arg, Emin, Emax, rtol=1e-4)[1])
+        gf_integral[pix] = quadgk(arg, Emin, Emax, rtol=1e-4)[1]
         next!(p)
     end
     return gf_integral
