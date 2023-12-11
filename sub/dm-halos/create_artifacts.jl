@@ -1,7 +1,7 @@
 using Pkg
 using Revise
 Pkg.activate(".")
-
+ENV["MapGenData_cache_label"] = "dm-halos"
 using MapGenData
 using HDF5
 using Unitful
@@ -23,19 +23,21 @@ fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
 MapGenData.fetch_fermilat_data(fits_artifact)
 MapGenData.make_fits_artifact(fits_artifact)
 
-Earr_min = [100, 1000, 10_000, 100_000]
-Earr_max = [1000, 10_000, 100_000, 1_000_000]
+# Earr_min = [100, 1000, 10_000, 100_000]
+# Earr_max = [1000, 10_000, 100_000, 1_000_000]
 
-Earr = Vector{Float64}()
-nbins=4
+# Earr = Vector{Float64}()
+# nbins=4
 
-for i in eachindex(Earr_min)
-    push!(Earr, 10 .^ range(log10(Earr_min[i]), log10(Earr_max[i]), length=nbins+1)...)
-end
-Earr = unique(Earr)*u"MeV"
+# for i in eachindex(Earr_min)
+#     push!(Earr, 10 .^ range(log10(Earr_min[i]), log10(Earr_max[i]), length=nbins+1)...)
+# end
+# Earr = unique(Earr)*u"MeV"
 
-Emin_macro = ustrip.(u"MeV", Earr[1:end-1])
-Emax_macro = ustrip.(u"MeV", Earr[2:end])
+Earr = 10 .^ range(log10(100), log10(1_000_000), length=16+1) # MeV
+
+Emin_macro = Earr[1:end-1]
+Emax_macro =  Earr[2:end]
 
 #%%
 @info "Start creating jld artifacts"
