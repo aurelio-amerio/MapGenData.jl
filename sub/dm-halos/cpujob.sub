@@ -1,11 +1,11 @@
 universe = vanilla
 
 executable              = start_cpujob.sh
-arguments               = "20" 
+arguments               = "32" 
 getenv = True
 
 Request_Memory = 60000
-Request_cpus = 20
+Request_cpus = 16
 
 log                     = ../condor_logs/cpujob_dm_halos.log
 output                  = ../condor_logs/outfile_dm_halos.out

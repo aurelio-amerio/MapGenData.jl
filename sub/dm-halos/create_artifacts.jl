@@ -1,7 +1,7 @@
 using Pkg
 using Revise
 Pkg.activate(".")
-ENV["MapGenData_cache_label"] = "dm-halos"
+ENV["MapGenData_cache_label"] = "dm-halos-combined"
 using MapGenData
 using HDF5
 using Unitful
@@ -13,8 +13,8 @@ MapGenData.clear_cache(clear_fermilat_data=true)
 #%%
 @info "Using nthreads = $(nthreads())"
 
-hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.1-1000GeV_dm_halos/hdf5"
-artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts-dm-halos"
+hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/source_nside_2048_front+back_0.1-1000GeV_zmax_combined/hdf5"
+artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts-dm-halos-source-combined"
 artifact_cache = MapGenData.artifact_cache
 
 fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
