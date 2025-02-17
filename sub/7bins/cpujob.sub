@@ -1,11 +1,11 @@
 universe = vanilla
 
 executable              = start_cpujob.sh
-arguments               = "20" 
+arguments               = "8" 
 getenv = True
 
-Request_Memory = 50960
-Request_cpus = 20
+Request_Memory = 32GB
+Request_cpus = 8
 
 log                     = ../condor_logs/cpujob.log
 output                  = ../condor_logs/outfile.out

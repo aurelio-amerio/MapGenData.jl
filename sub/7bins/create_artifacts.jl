@@ -1,7 +1,7 @@
 using Pkg
 using Revise
 Pkg.activate(".")
-
+ENV["MapGenData_cache_label"] = "7bins" # 870 weeks
 using MapGenData
 using HDF5
 using Unitful
@@ -9,12 +9,13 @@ using StaticArrays
 using JLD2
 using Base.Threads
 #%%
-MapGenData.clear_cache(clear_fermilat_data=true)
+MapGenData.clear_cache()
 #%%
 @info "Using nthreads = $(nthreads())"
 
-hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto_nside2048_front_0.5_1000_GeV/hdf5"
-artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts"
+hdf5_folder = "/lhome/ific/a/aamerio/data/fermi/output/sourceveto-w9-w870-7bins/hdf5"
+artifacts_folder = "/lhome/ific/a/aamerio/data/artifacts/7bins"
+mkpath(artifacts_folder)
 artifact_cache = MapGenData.artifact_cache
 
 fits_artifact = FITSArtifact(hdf5_folder, artifacts_folder)
@@ -44,7 +45,6 @@ for nside in [1024, 64, 128, 256, 512]
     make_jld2_artifacts(jld2_artifact_)
 end
 
-return 1
 
 
 
