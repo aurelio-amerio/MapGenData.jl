@@ -49,51 +49,79 @@ function apply_W_beam(map::AbstractVector{T}, W_beam_arr::AbstractVector) where 
 end
 
 ##### 
+"""
+    map_coordinates(input, grid)
+
+Bilinear samples of `input` (`nlat` by `nlon`) at the 1-based fractional indices
+`grid = (row, col)`: grid node `(i, j)` sits at index `(i, j)`. Longitude (columns) is
+periodic: `col` is wrapped into `[0.5, nlon + 0.5)` and the grid is padded with one
+column on each side (the opposite edge column), so a point beside the seam interpolates
+between the first and last columns. Latitude (rows) is clamped to the edge rows.
+"""
 function map_coordinates(input, grid)
-    (dec2,ra2) = grid
+    (dec2, ra2) = grid
     (lenx, leny) = size(input)
-    x = range(minimum(dec2), maximum(dec2), length=lenx)
-    y = range(minimum(ra2), maximum(ra2), length=leny)
-    knots = (x,y)
-    itp = linear_interpolation(knots, input)
-    return itp.(dec2, ra2)
+    padded = hcat(input[:, leny], input, input[:, 1])
+    itp = linear_interpolation((1:lenx, 1:leny+2), padded)
+    row = clamp.(dec2, 1, lenx)
+    col = mod.(ra2 .- 0.5, leny) .+ 1.5 # wrapped to [0.5, nlon + 0.5), then +1 for the pad
+    return itp.(row, col)
 end
 
-function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
-    nside = jld2_artifact.nside
+"""
+    car_pixel_indices(header, nside)
+
+1-based fractional `(row, col)` of the RING pixel centres of `nside` on a galactic CAR
+grid, from the `CRPIX`, `CRVAL` and `CDELT` keywords of `header` (FITS WCS: pixel `p`
+of axis `k` sits at `CRVAL_k + (p - CRPIX_k) * CDELT_k`), longitude wrapped into
+`(-180, 180]` around `CRVAL1`.
+"""
+function car_pixel_indices(header::FITSHeader, nside::Int)
     res = Resolution(nside)
-    npix = 12 * nside^2
+    npix = nside2npix(nside)
+    crpix1, crval1, cdelt1 = Float64(header["CRPIX1"]), Float64(header["CRVAL1"]), Float64(header["CDELT1"])
+    crpix2, crval2, cdelt2 = Float64(header["CRPIX2"]), Float64(header["CRVAL2"]), Float64(header["CDELT2"])
+    row = zeros(npix)
+    col = zeros(npix)
+    for j in 1:npix
+        (theta, phi) = pix2angRing(res, j)
+        b = 90 - rad2deg(theta)
+        lon_wrapped = 180 - mod(180 - (rad2deg(phi) - crval1), 360) # in (-180, 180]
+        row[j] = crpix2 + (b - crval2) / cdelt2
+        col[j] = crpix1 + lon_wrapped / cdelt1
+    end
+    return row, col
+end
 
-    # galactic diffuse map
-    filepath = joinpath(fits_cache, "gll_iem_v07.fits")
+"""
+    sample_galactic_fg_v07(filepath, nside)
 
+Sample every energy plane of a galactic CAR template cube (gll_iem_v07 layout: primary
+image, `ENERGIES` extension with column `energy` in MeV) at the RING pixel centres of
+`nside`, using the WCS keywords of the primary header. Returns `(model_heal (npix, nE),
+energy_fg1)`.
+"""
+function sample_galactic_fg_v07(filepath::AbstractString, nside::Int)
     file = FITS(filepath, "r")
     energy_fg1 = read(file[2], "energy")
+    header = read_header(file[1])
     model_ = Float64.(read(file[1]))
     close(file)
 
-    model = permutedims(model_, (3,2,1))
-    eneb_fg = length(energy_fg1)
+    model = permutedims(model_, (3,2,1)) # (nE, nlat, nlon)
+    row, col = car_pixel_indices(header, nside)
 
-    dec2 = zeros(npix)
-    ra2 = zeros(npix)
-    for j in 1:npix
-        (dec2[j], ra2[j]) = pix2angRing(res, j)
-    end
-    nres = 8 # 8
-    dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
-    ra2 = ( ( -ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres
-
-    model_heal = ones((npix,eneb_fg))
-
-    ra2[ra2.>2879].=2879
-    dec2[dec2.>1440].=1440
-
+    model_heal = ones((length(row), length(energy_fg1)))
     for ii in eachindex(energy_fg1)
-        model_heal[:,ii] .= map_coordinates(model[ii,:,:],[dec2,ra2]) 
+        model_heal[:,ii] .= map_coordinates(model[ii,:,:], [row, col])
     end
-
     return model_heal, energy_fg1
+end
+
+function read_galactic_fg_v07(jld2_artifact::JLD2Artifact)
+    # galactic diffuse map
+    filepath = joinpath(fits_cache, "gll_iem_v07.fits")
+    return sample_galactic_fg_v07(filepath, jld2_artifact.nside)
 end
 
 function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
@@ -119,11 +147,11 @@ function read_galactic_fg_v05(jld2_artifact::JLD2Artifact)
     nres = 8 # 8
     dec2 = ( -dec2 * 180 / pi .+ 180 ) .* nres
     ra2 = ( ( +ra2 * 180 / pi .+ 360 .+ 180 ) .% 360 ) .* nres #fg v5 uses a different coord convention for the grid
+    # 0-based grid indices above; map_coordinates takes 1-based indices and wraps the longitude
+    dec2 .+= 1
+    ra2 .+= 1
 
     model_heal = ones((npix,eneb_fg))
-
-    ra2[ra2.>2879].=2879
-    dec2[dec2.>1440].=1440
 
     for ii in eachindex(energy_fg1)
         model_heal[:,ii] .= map_coordinates(model[ii,:,:],[dec2,ra2]) 
