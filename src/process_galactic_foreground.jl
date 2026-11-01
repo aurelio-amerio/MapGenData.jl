@@ -285,12 +285,27 @@ function interpolate_galactic_fg(model::AbstractArray, energy::AbstractArray, jl
     # nchannels = length(energy_fg1_filtered)
     npix = 12*nside^2
 
-    # now create an inteprolation in E for ease of use
-    nodes = (1:npix, log10.(energy))
-    itp_ = Interpolations.interpolate(nodes, log10.(model), (NoInterp(),Gridded(Linear()))) # pixel have to be exact, we interpolate linearly in energy
-    itp = extrapolate(itp_, (Throw(), Line()))
-    gf_model_interpolated(pix::Int, En::Energy) = 10 .^ itp(pix, log10(ustrip(u"MeV", En))) * u"MeV^-1" # the gf is in units of cm^-2 s^-1 sr^-1 MeV^-1. While cm^-2 s^-1 sr^-1 disappear when multiplying by the exposure and srpix, we need to divide by MeV to get the correct units for the Energy integration
+    size(model, 1) == npix || error("model has $(size(model, 1)) pixels, expected $npix for nside $nside")
+    size(model, 2) == length(energy) || error("model has $(size(model, 2)) planes for $(length(energy)) energies")
+    length(energy) >= 2 || error("need at least two template planes, got $(length(energy))")
+
+    # linear in log10 E - log10 f between the planes, and along the end segments beyond the
+    # first and last plane. Done by hand: Interpolations.jl's (NoInterp(), Gridded(Linear()))
+    # with (Throw(), Line()) holds the value flat outside the knots (Interpolations 0.15.1).
+    logE = log10.(collect(Float64, energy))
+    all(diff(logE) .> 0) || error("template energies must be strictly increasing, got $energy")
+    logm = log10.(model)
+    gf_model_interpolated(pix::Int, En::Energy) = 10^_loglog_line(logm, logE, pix, log10(ustrip(u"MeV", En))) * u"MeV^-1" # the gf is in units of cm^-2 s^-1 sr^-1 MeV^-1. While cm^-2 s^-1 sr^-1 disappear when multiplying by the exposure and srpix, we need to divide by MeV to get the correct units for the Energy integration
     return gf_model_interpolated, energy*u"MeV"
+end
+
+# log10 f of pixel `pix` at log10 E = x: the straight line through the two planes that
+# bracket x, or through the first or last two planes when x is outside them.
+function _loglog_line(logm::AbstractMatrix, logE::AbstractVector, pix::Int, x::Real)
+    i = clamp(searchsortedlast(logE, x), 1, length(logE) - 1)
+    y0 = logm[pix, i]
+    y1 = logm[pix, i + 1]
+    return y0 + (y1 - y0) * (x - logE[i]) / (logE[i + 1] - logE[i])
 end
 
 function process_galactic_fg_smoothed_counts(gf_model_interpolated::Function, exp_map_E::Function, jld2_artifact::JLD2Artifact; Emin::Energy, Emax::Energy, verbose=true)
